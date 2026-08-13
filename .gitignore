@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Documentação local de execução (não versionada)
+/INSTRUCOES_EXECUCAO_LOCAL.doc

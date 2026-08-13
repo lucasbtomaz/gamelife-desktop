@@ -1,8 +1,36 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+beforeEach(() => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+});
+
+afterEach(() => jest.restoreAllMocks());
+
+test('carrega a tela da biblioteca', async () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Biblioteca' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Nome do jogo')).toBeInTheDocument();
+  expect(screen.getByText('Mídia física')).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'PlayStation 2' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'PlayStation 3' })).toBeInTheDocument();
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/biblioteca'));
+});
+
+test('adiciona um jogo pela API', async () => {
+  fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => [] })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ id: '1', titulo: 'Hades', plataforma: 'PC' }) });
+
+  render(<App />);
+  fireEvent.change(screen.getByLabelText('Nome do jogo'), { target: { value: 'Hades' } });
+  fireEvent.change(screen.getByLabelText('Plataforma'), { target: { value: 'PC' } });
+  fireEvent.click(screen.getByLabelText('Mídia física'));
+  fireEvent.click(screen.getByRole('button', { name: /adicionar à biblioteca/i }));
+
+  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/biblioteca', expect.objectContaining({
+    method: 'POST',
+    body: JSON.stringify({ titulo: 'Hades', plataforma: 'PC', midiaFisica: true })
+  })));
+  expect(await screen.findByText('Hades')).toBeInTheDocument();
 });
