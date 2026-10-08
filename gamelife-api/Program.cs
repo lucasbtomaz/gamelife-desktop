@@ -1,37 +1,47 @@
 using Microsoft.EntityFrameworkCore;
 using gamelife_api.Context;
-using gamelife_api.Models;
-using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// Adicionar controllers da API
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 
-var connectionString =
-    builder.Configuration.GetConnectionString("GameLife")
-    ?? throw new InvalidOperationException(
-        "A connection string 'GameLife' não foi encontrada.");
+// Configuração de CORS para permitir requisições de frontends locais ou hospedados
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirTudo", politica =>
+    {
+        politica.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+    });
+});
+
+var connectionString = builder.Configuration.GetConnectionString("GameLife");
 
 builder.Services.AddDbContext<GameLifeDbContext>(options =>
-    options.UseMySQL(connectionString));
-
+{
+    if (!string.IsNullOrWhiteSpace(connectionString))
+    {
+        options.UseMySQL(connectionString);
+    }
+    else
+    {
+        // Se a connection string não estiver configurada no appsettings.json, utiliza banco em memória para testes
+        options.UseInMemoryDatabase("GameLifeDb");
+    }
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-
 }
 
+app.UseCors("PermitirTudo");
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 await app.RunAsync();

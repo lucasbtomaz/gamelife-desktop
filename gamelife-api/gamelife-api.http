@@ -1,6 +1,79 @@
 @gamelife_api_HostAddress = http://localhost:5044
 
-GET {{gamelife_api_HostAddress}}/weatherforecast/
+### Listar Jogos
+GET {{gamelife_api_HostAddress}}/api/jogos
 Accept: application/json
 
-###
+### Obter Jogo por ID
+GET {{gamelife_api_HostAddress}}/api/jogos/1
+Accept: application/json
+
+### Cadastrar Jogo
+POST {{gamelife_api_HostAddress}}/api/jogos
+Content-Type: application/json
+
+{
+  "titulo": "The Witcher 3: Wild Hunt",
+  "anoLancamento": 2015
+}
+
+### Listar Canais
+GET {{gamelife_api_HostAddress}}/api/canais
+Accept: application/json
+
+### Cadastrar Canal
+POST {{gamelife_api_HostAddress}}/api/canais
+Content-Type: application/json
+
+{
+  "nome": "Steam",
+  "permitePosse": true,
+  "permitePreco": true
+}
+
+### Listar Posses (Biblioteca)
+GET {{gamelife_api_HostAddress}}/api/posses
+Accept: application/json
+
+### Cadastrar Posse
+POST {{gamelife_api_HostAddress}}/api/posses
+Content-Type: application/json
+
+{
+  "jogoId": 1,
+  "canalId": 1
+}
+
+### Listar Registros de Jogatina
+GET {{gamelife_api_HostAddress}}/api/registros-jogos
+Accept: application/json
+
+### Cadastrar Registro de Jogatina
+POST {{gamelife_api_HostAddress}}/api/registros-jogos
+Content-Type: application/json
+
+{
+  "posseJogoId": 1,
+  "tempoEmHoras": 85.5,
+  "dificuldade": "Normal",
+  "conquistasPossiveis": 78,
+  "conquistasObtidas": 65
+}
+
+### Listar Lista de Desejos
+GET {{gamelife_api_HostAddress}}/api/lista-desejos
+Accept: application/json
+
+### Adicionar Jogo à Lista de Desejos
+POST {{gamelife_api_HostAddress}}/api/lista-desejos
+Content-Type: application/json
+
+{
+  "jogoId": 1,
+  "precoDesejado": 59.90,
+  "observacao": "Esperando promoção de fim de ano"
+}
+
+### Obter Estatísticas do Dashboard
+GET {{gamelife_api_HostAddress}}/api/dashboard/stats
+Accept: application/json
