@@ -9,6 +9,7 @@ namespace gamelife_api.Models
         public int JogoId { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "Informe um ID de canal válido.")]
         public int CanalId { get; set; }
+        public bool MidiaFisica { get; set; }
         public DateTime? AdquiridoEm { get; set; }
 
         public Jogo Jogo { get; set; } = null!;

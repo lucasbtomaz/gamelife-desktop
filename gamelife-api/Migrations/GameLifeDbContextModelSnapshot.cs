@@ -16,7 +16,7 @@ namespace gamelife_api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             modelBuilder.Entity("gamelife_api.Models.Canal", b =>
@@ -122,6 +122,9 @@ namespace gamelife_api.Migrations
                     b.Property<int>("JogoId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("MidiaFisica")
+                        .HasColumnType("tinyint(1)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CanalId");
@@ -150,9 +153,6 @@ namespace gamelife_api.Migrations
                     b.Property<DateTime?>("FinalizadoEm")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int?>("ItemListaDesejosId")
-                        .HasColumnType("int");
-
                     b.Property<int>("PosseJogoId")
                         .HasColumnType("int");
 
@@ -160,8 +160,6 @@ namespace gamelife_api.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ItemListaDesejosId");
 
                     b.HasIndex("PosseJogoId");
 
@@ -244,10 +242,6 @@ namespace gamelife_api.Migrations
 
             modelBuilder.Entity("gamelife_api.Models.RegistroJogo", b =>
                 {
-                    b.HasOne("gamelife_api.Models.ItemListaDesejos", null)
-                        .WithMany("Registros")
-                        .HasForeignKey("ItemListaDesejosId");
-
                     b.HasOne("gamelife_api.Models.PosseJogo", "PosseJogo")
                         .WithMany()
                         .HasForeignKey("PosseJogoId")
@@ -266,7 +260,7 @@ namespace gamelife_api.Migrations
                         .IsRequired();
 
                     b.HasOne("gamelife_api.Models.ItemListaDesejos", "ItemListaDesejos")
-                        .WithMany()
+                        .WithMany("RegistrosPrecos")
                         .HasForeignKey("ItemListaDesejosId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -287,7 +281,7 @@ namespace gamelife_api.Migrations
                 {
                     b.Navigation("Motivos");
 
-                    b.Navigation("Registros");
+                    b.Navigation("RegistrosPrecos");
                 });
 
             modelBuilder.Entity("gamelife_api.Models.Jogo", b =>
