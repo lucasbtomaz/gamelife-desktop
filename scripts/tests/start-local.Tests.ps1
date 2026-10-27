@@ -5,6 +5,18 @@ Describe 'Inicializador local do GameLife' {
         . $scriptPath
     }
 
+    It 'rejeita resposta de outro aplicativo na mesma porta' {
+        Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = 200; Content = '<html>outro app</html>' } }
+
+        Test-GameLifeReady -HealthUrl 'http://127.0.0.1:5044' -TimeoutSeconds 0 | Should Be $false
+    }
+
+    It 'aceita somente a identidade esperada do GameLife' {
+        Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = 200; Content = '{"application":"GameLife","status":"ready"}' } }
+
+        Test-GameLifeReady -HealthUrl 'http://127.0.0.1:5044' -TimeoutSeconds 0 | Should Be $true
+    }
+
     It 'falha com mensagem clara quando o executável não existe' {
         $inexistente = Join-Path $TestDrive 'GameLife.exe'
         $exception = $null
@@ -42,5 +54,17 @@ Describe 'Inicializador local do GameLife' {
         Start-GameLife -ExecutablePath $executavel -NoBrowser
 
         Assert-MockCalled Start-Process -Times 1 -ParameterFilter { $WindowStyle -eq 'Hidden' }
+    }
+
+    It 'mostra uma mensagem quando a inicialização falha' {
+        Mock Start-GameLife { throw 'Falha interna sensível.' }
+        Mock Show-GameLifeError { }
+
+        $exitCode = Invoke-GameLifeLauncher -ExecutablePath 'GameLife.exe' -NoBrowser
+
+        $exitCode | Should Be 1
+        Assert-MockCalled Show-GameLifeError -Times 1 -ParameterFilter {
+            $Message -notmatch 'sensível' -and $Message -match 'não conseguiu iniciar'
+        }
     }
 }

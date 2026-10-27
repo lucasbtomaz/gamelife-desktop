@@ -52,8 +52,11 @@ function Test-GameLifeReady {
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     do {
         try {
-            $response = Invoke-WebRequest -Uri "$HealthUrl/biblioteca" -Method Get -TimeoutSec 2 -SkipHttpErrorCheck
-            if ($response.StatusCode -eq 200) {
+            $response = Invoke-WebRequest -Uri "$HealthUrl/health" -Method Get -TimeoutSec 2 -UseBasicParsing
+            $health = $response.Content | ConvertFrom-Json
+            if ($response.StatusCode -eq 200 -and
+                $health.application -eq 'GameLife' -and
+                $health.status -eq 'ready') {
                 return $true
             }
         }
@@ -107,6 +110,39 @@ function Start-GameLife {
     }
 }
 
+function Show-GameLifeError {
+    param([Parameter(Mandatory)][string]$Message)
+
+    Add-Type -AssemblyName PresentationFramework
+    [System.Windows.MessageBox]::Show(
+        $Message,
+        'GameLife',
+        [System.Windows.MessageBoxButton]::OK,
+        [System.Windows.MessageBoxImage]::Error
+    ) | Out-Null
+}
+
+function Invoke-GameLifeLauncher {
+    param(
+        [Parameter(Mandatory)][string]$ExecutablePath,
+        [string]$Url = 'http://127.0.0.1:5044',
+        [switch]$NoBrowser
+    )
+
+    try {
+        Start-GameLife -ExecutablePath $ExecutablePath -Url $Url -NoBrowser:$NoBrowser
+        return 0
+    }
+    catch {
+        $dataDirectory = Split-Path (Get-GameLifeLocalConfigurationPath) -Parent
+        New-Item -ItemType Directory -Path $dataDirectory -Force | Out-Null
+        $diagnosticPath = Join-Path $dataDirectory 'launcher-error.log'
+        $_.Exception.Message | Set-Content -LiteralPath $diagnosticPath -Encoding UTF8
+        Show-GameLifeError -Message "O GameLife não conseguiu iniciar. Verifique se o MySQL está ativo. Detalhes técnicos: $diagnosticPath"
+        return 1
+    }
+}
+
 if ($MyInvocation.InvocationName -ne '.') {
-    Start-GameLife -ExecutablePath $ExecutablePath -Url $Url -NoBrowser:$NoBrowser
+    exit (Invoke-GameLifeLauncher -ExecutablePath $ExecutablePath -Url $Url -NoBrowser:$NoBrowser)
 }

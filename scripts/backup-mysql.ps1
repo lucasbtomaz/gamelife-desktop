@@ -99,7 +99,10 @@ function Invoke-GameLifeBackup {
         if (-not [string]::IsNullOrWhiteSpace($port)) {
             $lines += "port=$port"
         }
-        Set-Content -LiteralPath $defaultsFile -Value $lines -Encoding ASCII
+        [System.IO.File]::WriteAllLines(
+            $defaultsFile,
+            $lines,
+            [System.Text.UTF8Encoding]::new($false))
 
         $exitCode = Invoke-MySqlDump `
             -MySqlDumpPath $MySqlDumpPath `

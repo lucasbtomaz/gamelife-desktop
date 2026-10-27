@@ -45,4 +45,19 @@ Describe 'Backup MySQL do GameLife' {
         $result | Should Be $output
         (Get-Item -LiteralPath $output).Length | Should BeGreaterThan 0
     }
+
+    It 'preserva credenciais UTF-8 sem BOM no arquivo temporário' {
+        $output = Join-Path $TestDrive 'unicode.sql'
+        Mock Invoke-MySqlDump {
+            $bytes = [System.IO.File]::ReadAllBytes($DefaultsFile)
+            if ($bytes[0] -eq 239) { throw 'O arquivo contém BOM.' }
+            if ([System.IO.File]::ReadAllText($DefaultsFile) -notmatch 'usuário') { throw 'O arquivo perdeu caracteres UTF-8.' }
+            Set-Content -LiteralPath $OutputPath -Value '-- GameLife backup'
+            return 0
+        }
+
+        Invoke-GameLifeBackup -OutputPath $output -MySqlDumpPath 'mysqldump.exe' -ConnectionString 'Server=local;Database=GameLifeDb;User=usuário;Password=senhã' | Out-Null
+
+        Assert-MockCalled Invoke-MySqlDump -Times 1
+    }
 }

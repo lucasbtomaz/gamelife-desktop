@@ -16,4 +16,22 @@ public sealed class StartupConfigurationTests
         Assert.DoesNotContain("Password=", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Pwd=", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void InicializacaoComConnectionStringVaziaFalhaComMensagemSegura(string connectionString)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:GameLife"] = connectionString
+            })
+            .Build();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => GameLifeStartup.ObterConnectionString(configuration));
+
+        Assert.Contains("ConnectionStrings:GameLife", exception.Message);
+    }
 }
