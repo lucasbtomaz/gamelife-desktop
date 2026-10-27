@@ -41,6 +41,80 @@ namespace gamelife_api.Migrations
                     b.ToTable("Canais");
                 });
 
+            modelBuilder.Entity("gamelife_api.Models.Colecao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CriadaEm")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Colecoes");
+                });
+
+            modelBuilder.Entity("gamelife_api.Models.ColecaoJogo", b =>
+                {
+                    b.Property<int>("ColecaoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("JogoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("AdicionadoEm")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("ColecaoId", "JogoId");
+
+                    b.HasIndex("JogoId");
+
+                    b.ToTable("ColecoesJogos");
+                });
+
+            modelBuilder.Entity("gamelife_api.Models.Conquista", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DesbloqueadaEm")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int?>("JogoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JogoId");
+
+                    b.ToTable("Conquistas");
+                });
+
             modelBuilder.Entity("gamelife_api.Models.ItemListaDesejos", b =>
                 {
                     b.Property<int>("Id")
@@ -105,6 +179,28 @@ namespace gamelife_api.Migrations
                     b.HasIndex("ItemListaDesejosId");
 
                     b.ToTable("MotivosDesejos");
+                });
+
+            modelBuilder.Entity("gamelife_api.Models.PerfilLocal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<bool>("ExibirJogosRecentes")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("FotoDataUrl")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PerfisLocais");
                 });
 
             modelBuilder.Entity("gamelife_api.Models.PosseJogo", b =>
@@ -199,6 +295,35 @@ namespace gamelife_api.Migrations
                     b.ToTable("RegistrosPrecos");
                 });
 
+            modelBuilder.Entity("gamelife_api.Models.ColecaoJogo", b =>
+                {
+                    b.HasOne("gamelife_api.Models.Colecao", "Colecao")
+                        .WithMany("Jogos")
+                        .HasForeignKey("ColecaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("gamelife_api.Models.Jogo", "Jogo")
+                        .WithMany("Colecoes")
+                        .HasForeignKey("JogoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Colecao");
+
+                    b.Navigation("Jogo");
+                });
+
+            modelBuilder.Entity("gamelife_api.Models.Conquista", b =>
+                {
+                    b.HasOne("gamelife_api.Models.Jogo", "Jogo")
+                        .WithMany()
+                        .HasForeignKey("JogoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Jogo");
+                });
+
             modelBuilder.Entity("gamelife_api.Models.ItemListaDesejos", b =>
                 {
                     b.HasOne("gamelife_api.Models.Jogo", "Jogo")
@@ -277,6 +402,11 @@ namespace gamelife_api.Migrations
                     b.Navigation("RegistrosPrecos");
                 });
 
+            modelBuilder.Entity("gamelife_api.Models.Colecao", b =>
+                {
+                    b.Navigation("Jogos");
+                });
+
             modelBuilder.Entity("gamelife_api.Models.ItemListaDesejos", b =>
                 {
                     b.Navigation("Motivos");
@@ -286,6 +416,8 @@ namespace gamelife_api.Migrations
 
             modelBuilder.Entity("gamelife_api.Models.Jogo", b =>
                 {
+                    b.Navigation("Colecoes");
+
                     b.Navigation("PossesJogos");
                 });
 #pragma warning restore 612, 618

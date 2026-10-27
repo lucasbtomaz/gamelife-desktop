@@ -14,5 +14,6 @@ namespace gamelife_api.Models
         public int? AnoLancamento { get; set; }
 
         public ICollection<PosseJogo> PossesJogos { get; set; } = [];
+        public ICollection<ColecaoJogo> Colecoes { get; set; } = [];
     }
 }

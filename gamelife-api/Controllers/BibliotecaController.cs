@@ -34,6 +34,7 @@ public sealed class BibliotecaController : ControllerBase
             .OrderBy(posse => posse.Jogo.Titulo)
             .Select(posse => new ItemBibliotecaResponse(
                 posse.Id,
+                posse.JogoId,
                 posse.Jogo.Titulo,
                 posse.Canal.Nome,
                 posse.MidiaFisica));
@@ -69,7 +70,7 @@ public sealed class BibliotecaController : ControllerBase
         _contexto.PossesJogos.Add(posse);
         await _contexto.SaveChangesAsync(cancellationToken);
 
-        var response = new ItemBibliotecaResponse(posse.Id, jogo.Titulo, canal.Nome, posse.MidiaFisica);
+        var response = new ItemBibliotecaResponse(posse.Id, jogo.Id, jogo.Titulo, canal.Nome, posse.MidiaFisica);
         return Created($"/biblioteca/{posse.Id}", response);
     }
 }
@@ -79,4 +80,4 @@ public sealed record CriarItemBibliotecaRequest(
     [Required, MaxLength(100)] string Plataforma,
     bool MidiaFisica);
 
-public sealed record ItemBibliotecaResponse(int Id, string Titulo, string Plataforma, bool MidiaFisica);
+public sealed record ItemBibliotecaResponse(int Id, int JogoId, string Titulo, string Plataforma, bool MidiaFisica);

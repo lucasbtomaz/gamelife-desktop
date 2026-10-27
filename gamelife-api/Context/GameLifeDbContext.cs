@@ -16,6 +16,33 @@ namespace gamelife_api.Context
         public DbSet<MotivoDesejo> MotivosDesejos { get; set; }
         public DbSet<RegistroPreco> RegistrosPrecos { get; set; }
         public DbSet<RegistroJogo> RegistrosJogos { get; set; }
+        public DbSet<PerfilLocal> PerfisLocais { get; set; }
+        public DbSet<Colecao> Colecoes { get; set; }
+        public DbSet<ColecaoJogo> ColecoesJogos { get; set; }
+        public DbSet<Conquista> Conquistas { get; set; }
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ColecaoJogo>()
+                .HasKey(item => new { item.ColecaoId, item.JogoId });
+
+            modelBuilder.Entity<ColecaoJogo>()
+                .HasOne(item => item.Colecao)
+                .WithMany(colecao => colecao.Jogos)
+                .HasForeignKey(item => item.ColecaoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ColecaoJogo>()
+                .HasOne(item => item.Jogo)
+                .WithMany(jogo => jogo.Colecoes)
+                .HasForeignKey(item => item.JogoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Conquista>()
+                .HasOne(item => item.Jogo)
+                .WithMany()
+                .HasForeignKey(item => item.JogoId)
+                .OnDelete(DeleteBehavior.SetNull);
+        }
     }
 }
