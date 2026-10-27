@@ -10,7 +10,15 @@ const Icon = ({ children, size = 20 }) => (
 );
 
 function App() {
+  const [tela, setTela] = useState('inicio');
   const [itens, setItens] = useState([]);
+  const [dashboard, setDashboard] = useState(null);
+  const [erroDashboard, setErroDashboard] = useState(false);
+  const [perfil, setPerfil] = useState({ nome: 'Jogador', fotoDataUrl: null, exibirJogosRecentes: true });
+  const [carregandoPerfil, setCarregandoPerfil] = useState(false);
+  const [colecoes, setColecoes] = useState([]);
+  const [nomeColecao, setNomeColecao] = useState('');
+  const [descricaoColecao, setDescricaoColecao] = useState('');
   const [titulo, setTitulo] = useState('');
   const [plataforma, setPlataforma] = useState('');
   const [midiaFisica, setMidiaFisica] = useState(false);
@@ -19,6 +27,16 @@ function App() {
   const [mensagem, setMensagem] = useState(null);
 
   useEffect(() => {
+    if (tela !== 'inicio') return;
+    setErroDashboard(false);
+    fetch('/api/dashboard/inicio')
+      .then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
+      .then((dados) => { setDashboard(dados); if (dados.perfil) setPerfil(dados.perfil); })
+      .catch(() => { setDashboard(null); setErroDashboard(true); });
+  }, [tela]);
+
+  useEffect(() => {
+    if (tela !== 'biblioteca' && tela !== 'colecoes') return;
     const carregarBiblioteca = async () => {
       try {
         const resposta = await fetch('/biblioteca');
@@ -32,7 +50,21 @@ function App() {
     };
 
     carregarBiblioteca();
-  }, []);
+  }, [tela]);
+
+  useEffect(() => {
+    if (tela !== 'colecoes') return;
+    fetch('/api/colecoes').then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
+      .then(setColecoes).catch(() => setMensagem({ tipo: 'erro', texto: 'Não foi possível carregar suas coleções.' }));
+  }, [tela]);
+
+  useEffect(() => {
+    if (tela !== 'configuracoes') return;
+    setCarregandoPerfil(true);
+    fetch('/api/perfil').then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
+      .then(setPerfil).catch(() => setMensagem({ tipo: 'erro', texto: 'Não foi possível carregar seu perfil.' }))
+      .finally(() => setCarregandoPerfil(false));
+  }, [tela]);
 
   const adicionarJogo = async (evento) => {
     evento.preventDefault();
@@ -66,28 +98,81 @@ function App() {
     }
   };
 
+  const criarColecao = async (evento) => {
+    evento.preventDefault();
+    try {
+      const resposta = await fetch('/api/colecoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nomeColecao, descricao: descricaoColecao || null }) });
+      if (!resposta.ok) throw new Error();
+      const criada = await resposta.json();
+      setColecoes((atuais) => [...atuais, criada]); setNomeColecao(''); setDescricaoColecao(''); setMensagem(null);
+    } catch { setMensagem({ tipo: 'erro', texto: 'Não foi possível criar a coleção.' }); }
+  };
+
+  const adicionarNaColecao = async (colecaoId, jogoId) => {
+    if (!jogoId) return;
+    try {
+      const resposta = await fetch(`/api/colecoes/${colecaoId}/jogos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jogoId: Number(jogoId) }) });
+      if (!resposta.ok) throw new Error();
+      const jogo = itens.find((item) => item.jogoId === Number(jogoId));
+      setColecoes((atuais) => atuais.map((item) => item.id === colecaoId ? { ...item, jogos: [...item.jogos, { id: Number(jogoId), titulo: jogo?.titulo }] } : item));
+      setMensagem(null);
+    } catch { setMensagem({ tipo: 'erro', texto: 'Não foi possível adicionar o jogo à coleção.' }); }
+  };
+
+  const salvarPerfil = async (evento) => {
+    evento.preventDefault();
+    try {
+      const resposta = await fetch('/api/perfil', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(perfil) });
+      if (!resposta.ok) throw new Error();
+      setMensagem({ tipo: 'sucesso', texto: 'Configurações salvas.' });
+    } catch { setMensagem({ tipo: 'erro', texto: 'Não foi possível salvar as configurações.' }); }
+  };
+
+  const carregarFoto = (arquivo) => {
+    if (!arquivo) return;
+    if (arquivo.size > 1_450_000) return setMensagem({ tipo: 'erro', texto: 'Escolha uma imagem menor que 1,4 MB.' });
+    const leitor = new FileReader();
+    leitor.onload = () => setPerfil((atual) => ({ ...atual, fotoDataUrl: leitor.result }));
+    leitor.readAsDataURL(arquivo);
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#biblioteca" aria-label="GameLife">
+        <button className="brand brand-button" onClick={() => setTela('inicio')} aria-label="GameLife">
           <span className="brand-mark"><Icon size={25}><path d="M7 6h10l3 9a2.3 2.3 0 0 1-4 2l-2-2h-4l-2 2a2.3 2.3 0 0 1-4-2z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></Icon></span>
           <span>Game<span>Life</span></span>
-        </a>
+        </button>
 
         <nav aria-label="Menu principal">
-          <a className="nav-item active" href="#biblioteca">
+          <button className={`nav-item ${tela === 'inicio' ? 'active' : ''}`} onClick={() => setTela('inicio')}>⌂ Início</button>
+          <button className={`nav-item ${tela === 'biblioteca' ? 'active' : ''}`} onClick={() => setTela('biblioteca')}>
             <Icon><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></Icon>
             Biblioteca
-          </a>
+          </button>
+          <button className={`nav-item ${tela === 'colecoes' ? 'active' : ''}`} onClick={() => setTela('colecoes')}>▦ Coleções</button>
+          <button className={`nav-item ${tela === 'configuracoes' ? 'active' : ''}`} onClick={() => setTela('configuracoes')}>⚙ Configurações</button>
         </nav>
 
         <div className="sidebar-footer">
-          <span className="avatar">GL</span>
-          <span><strong>Minha coleção</strong><small>{itens.length} {itens.length === 1 ? 'jogo' : 'jogos'}</small></span>
+          {perfil.fotoDataUrl ? <img className="avatar profile-photo" src={perfil.fotoDataUrl} alt="Foto do perfil" /> : <span className="avatar">{perfil.nome?.slice(0, 2).toUpperCase()}</span>}
+          <span><strong>{perfil.nome || 'Jogador'}</strong><small>{itens.length} {itens.length === 1 ? 'jogo' : 'jogos'}</small></span>
         </div>
       </aside>
 
-      <main id="biblioteca">
+      {tela === 'inicio' && <main id="inicio">
+        <header className="page-header"><div><span className="eyebrow">VISÃO GERAL</span><h1>Início</h1><p>Seu espaço pessoal para acompanhar jogos e conquistas.</p></div></header>
+        {erroDashboard && <div className="feedback erro page-feedback" role="alert">Não foi possível carregar o resumo. Verifique se o MySQL está ativo.</div>}
+        <section className="dashboard-grid">
+          <div className="profile-card">{perfil.fotoDataUrl ? <img src={perfil.fotoDataUrl} alt="Foto do perfil" /> : <span className="large-avatar">{perfil.nome?.slice(0, 2).toUpperCase()}</span>}<div><span className="eyebrow">PERFIL LOCAL</span><h2>{perfil.nome || 'Jogador'}</h2></div></div>
+          <div className="stat-card"><strong>{dashboard?.resumo?.totalJogos ?? 0}</strong><span>Jogos</span></div>
+          <div className="stat-card"><strong>{dashboard?.resumo?.totalColecoes ?? 0}</strong><span>Coleções</span></div>
+          <div className="stat-card"><strong>{dashboard?.conquistas?.length ?? 0}</strong><span>Conquistas recentes</span></div>
+        </section>
+        <section className="home-columns">{perfil.exibirJogosRecentes && <div className="panel-card"><h2>Jogos recentes</h2>{dashboard?.jogosRecentes?.length ? dashboard.jogosRecentes.map((jogo) => <div className="simple-row" key={`${jogo.jogoId}-${jogo.adquiridoEm}`}><strong>{jogo.titulo}</strong><span>{jogo.plataforma}</span></div>) : <p>Nenhum jogo cadastrado ainda.</p>}</div>}<div className="panel-card"><h2>Troféus e conquistas</h2>{dashboard?.conquistas?.length ? dashboard.conquistas.map((item) => <div className="simple-row" key={item.id}><strong>{item.titulo}</strong><span>{item.tipo}</span></div>) : <p>Suas conquistas aparecerão aqui.</p>}</div></section>
+      </main>}
+
+      {tela === 'biblioteca' && <main id="biblioteca">
         <header className="page-header">
           <div>
             <span className="eyebrow">SUA COLEÇÃO</span>
@@ -160,7 +245,11 @@ function App() {
             )}
           </section>
         </section>
-      </main>
+      </main>}
+
+      {tela === 'colecoes' && <main id="colecoes"><header className="page-header"><div><span className="eyebrow">LISTAS PERSONALIZADAS</span><h1>Coleções</h1><p>Agrupe os jogos da biblioteca do seu jeito.</p></div></header>{mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<section className="content-grid"><div className="form-card"><h2>Nova coleção</h2><form onSubmit={criarColecao}><label htmlFor="nome-colecao">Nome</label><input id="nome-colecao" value={nomeColecao} onChange={(e) => setNomeColecao(e.target.value)} required /><label htmlFor="descricao-colecao">Descrição</label><input id="descricao-colecao" value={descricaoColecao} onChange={(e) => setDescricaoColecao(e.target.value)} /><button type="submit">Criar coleção</button></form></div><section className="collection-list">{colecoes.length === 0 ? <div className="panel-card"><h2>Nenhuma coleção</h2><p>Crie uma lista para organizar jogos por tema, prioridade ou momento.</p></div> : colecoes.map((colecao) => <article className="panel-card" key={colecao.id}><h2>{colecao.nome}</h2><p>{colecao.descricao}</p><label htmlFor={`jogo-${colecao.id}`}>Adicionar jogo</label><select id={`jogo-${colecao.id}`} defaultValue="" onChange={(e) => { adicionarNaColecao(colecao.id, e.target.value); e.target.value = ''; }}><option value="">Selecione da biblioteca</option>{itens.filter((jogo) => !colecao.jogos.some((v) => v.id === jogo.jogoId)).map((jogo) => <option key={jogo.jogoId} value={jogo.jogoId}>{jogo.titulo}</option>)}</select><div className="tag-list">{colecao.jogos.map((jogo) => <span key={jogo.id}>{jogo.titulo}</span>)}</div></article>)}</section></section></main>}
+
+      {tela === 'configuracoes' && <main id="configuracoes"><header className="page-header"><div><span className="eyebrow">PREFERÊNCIAS LOCAIS</span><h1>Configurações</h1><p>Personalize como o GameLife aparece neste computador.</p></div></header><section className="settings-card form-card">{carregandoPerfil ? <p>Carregando perfil...</p> : <form onSubmit={salvarPerfil}><label htmlFor="nome-perfil">Nome de usuário</label><input id="nome-perfil" value={perfil.nome || ''} onChange={(e) => setPerfil((atual) => ({ ...atual, nome: e.target.value }))} required /><label htmlFor="foto-perfil">Foto do perfil</label><input id="foto-perfil" className="file-input" type="file" accept="image/*" onChange={(e) => carregarFoto(e.target.files[0])} /><label className="setting-toggle"><input type="checkbox" checked={perfil.exibirJogosRecentes ?? true} onChange={(e) => setPerfil((atual) => ({ ...atual, exibirJogosRecentes: e.target.checked }))} /> Exibir jogos recentes no início</label>{mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<button type="submit">Salvar configurações</button></form>}</section></main>}
     </div>
   );
 }

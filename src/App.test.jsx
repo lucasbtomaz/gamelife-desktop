@@ -8,8 +8,10 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks());
 
-test('carrega a tela da biblioteca', async () => {
+test('carrega o início e permite abrir a biblioteca', async () => {
   render(<App />);
+  expect(screen.getByRole('heading', { name: 'Início' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
   expect(screen.getByRole('heading', { name: 'Biblioteca' })).toBeInTheDocument();
   expect(screen.getByLabelText('Nome do jogo')).toBeInTheDocument();
   expect(screen.getByText('Mídia física')).toBeInTheDocument();
@@ -21,9 +23,11 @@ test('carrega a tela da biblioteca', async () => {
 test('adiciona um jogo pela API', async () => {
   fetch
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
+    .mockResolvedValueOnce({ ok: true, json: async () => [] })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ id: '1', titulo: 'Hades', plataforma: 'PC' }) });
 
   render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
   fireEvent.change(screen.getByLabelText('Nome do jogo'), { target: { value: 'Hades' } });
   fireEvent.change(screen.getByLabelText('Plataforma'), { target: { value: 'PC' } });
   fireEvent.click(screen.getByLabelText('Mídia física'));
@@ -37,9 +41,12 @@ test('adiciona um jogo pela API', async () => {
 });
 
 test('informa quando a biblioteca não pode ser carregada', async () => {
-  fetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+  fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => [] })
+    .mockResolvedValueOnce({ ok: false, json: async () => ({}) });
 
   render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Não foi possível carregar sua biblioteca. Verifique se a API está ligada.'
