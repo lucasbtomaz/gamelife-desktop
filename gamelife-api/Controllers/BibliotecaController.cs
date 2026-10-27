@@ -21,17 +21,22 @@ public sealed class BibliotecaController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<ItemBibliotecaResponse>>> ObterItens(
         CancellationToken cancellationToken)
     {
-        var itens = await _contexto.PossesJogos
+        var itens = await CriarConsulta(_contexto)
+            .ToListAsync(cancellationToken);
+
+        return Ok(itens);
+    }
+
+    public static IQueryable<ItemBibliotecaResponse> CriarConsulta(GameLifeDbContext contexto)
+    {
+        return contexto.PossesJogos
             .AsNoTracking()
+            .OrderBy(posse => posse.Jogo.Titulo)
             .Select(posse => new ItemBibliotecaResponse(
                 posse.Id,
                 posse.Jogo.Titulo,
                 posse.Canal.Nome,
-                posse.MidiaFisica))
-            .OrderBy(item => item.Titulo)
-            .ToListAsync(cancellationToken);
-
-        return Ok(itens);
+                posse.MidiaFisica));
     }
 
     [HttpPost]
