@@ -34,3 +34,13 @@ test('adiciona um jogo pela API', async () => {
   })));
   expect(await screen.findByText('Hades')).toBeInTheDocument();
 });
+
+test('informa quando a biblioteca não pode ser carregada', async () => {
+  fetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+
+  render(<App />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Não foi possível carregar sua biblioteca. Verifique se a API está ligada.'
+  );
+});
