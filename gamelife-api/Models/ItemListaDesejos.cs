@@ -19,6 +19,6 @@ namespace gamelife_api.Models
         public Jogo Jogo { get; set; } = null!;
         public List<MotivoDesejo> Motivos { get; set; } = [];
 
-        public ICollection<RegistroJogo> Registros { get; set; } = [];
+        public ICollection<RegistroPreco> RegistrosPrecos { get; set; } = [];
     }
 }

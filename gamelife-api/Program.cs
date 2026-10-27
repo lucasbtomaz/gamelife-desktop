@@ -18,19 +18,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-var connectionString = builder.Configuration.GetConnectionString("GameLife");
+var connectionString = GameLifeStartup.ObterConnectionString(builder.Configuration);
 
 builder.Services.AddDbContext<GameLifeDbContext>(options =>
 {
-    if (!string.IsNullOrWhiteSpace(connectionString))
-    {
-        options.UseMySQL(connectionString);
-    }
-    else
-    {
-        // Se a connection string não estiver configurada no appsettings.json, utiliza banco em memória para testes
-        options.UseInMemoryDatabase("GameLifeDb");
-    }
+    options.UseMySQL(connectionString);
 });
 
 var app = builder.Build();
@@ -45,3 +37,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 await app.RunAsync();
+
+public partial class Program;
