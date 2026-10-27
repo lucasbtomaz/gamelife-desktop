@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>gamelife_api</RootNamespace>
+    <AssemblyName>GameLife</AssemblyName>
     <UserSecretsId>c59ebefd-a1cb-4fe9-a8bd-3cb748f6c9b7</UserSecretsId>
   </PropertyGroup>
 
@@ -18,6 +19,14 @@
 
   <ItemGroup>
     <Folder Include="Controllers\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\gamelife-web\build\**\*">
+      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

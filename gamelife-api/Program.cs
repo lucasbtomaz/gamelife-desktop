@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using gamelife_api.Context;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
+});
 
 // Adicionar controllers da API
 builder.Services.AddControllers();
@@ -34,7 +38,10 @@ if (app.Environment.IsDevelopment())
 app.UseCors("PermitirTudo");
 app.UseHttpsRedirection();
 app.UseAuthorization();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
 
