@@ -23,4 +23,4 @@ Para restaurar, use o MySQL Workbench ou o cliente `mysql` apontando para o banc
 - API: `dotnet run --project gamelife-api\gamelife-api.csproj`
 - Testes da API: `dotnet test gamelife-api.slnx`
 - Frontend: execute `npm start` em `D:\Projetos\gamelife-web`
-- Testes do frontend: `npm test -- --watchAll=false`
+- Testes do frontend: `npm test`

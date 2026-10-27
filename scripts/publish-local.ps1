@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $webRoot 'package.json'))) {
 Push-Location $webRoot
 try {
     Invoke-Checked { npm.cmd ci }
-    Invoke-Checked { npm.cmd test -- --watchAll=false }
+    Invoke-Checked { npm.cmd test }
     Invoke-Checked { npm.cmd run build }
 }
 finally {
