@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import App from './App';
+import { vi } from 'vitest';
+import App from './App.jsx';
 
 beforeEach(() => {
-  global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+  global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
 });
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => vi.restoreAllMocks());
 
 test('carrega a tela da biblioteca', async () => {
   render(<App />);
