@@ -16,31 +16,35 @@ public partial class MainWindow : Window
     private WebApplication? _aplicacao;
     private Uri? _origemLocal;
     private bool _encerrando;
+    private readonly DesktopLifecycle _lifecycle = new();
+    private readonly SemaphoreSlim _pararGate = new(1, 1);
 
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += Inicializar;
+        Loaded += (_, _) => _lifecycle.Iniciar(InicializarAsync);
         Closing += Encerrar;
     }
 
-    private async void Inicializar(object sender, RoutedEventArgs e)
+    private async Task InicializarAsync(CancellationToken cancellationToken)
     {
         try
         {
+            DesktopAssets.Validar(Path.Combine(AppContext.BaseDirectory, "wwwroot"));
             var connectionString = LocalConfiguration.ObterConnectionString();
             _aplicacao = GameLifeApplication.Criar(
                 [$"--ConnectionStrings:GameLife={connectionString}"],
                 builder => builder.WebHost.UseUrls("http://127.0.0.1:0"));
 
-            await _aplicacao.StartAsync();
+            await _aplicacao.StartAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             var endereco = _aplicacao.Services.GetRequiredService<IServer>()
                 .Features.Get<IServerAddressesFeature>()?.Addresses.SingleOrDefault()
                 ?? throw new InvalidOperationException("A API local não informou seu endereço.");
             _origemLocal = new Uri(endereco);
 
             using var client = new HttpClient { BaseAddress = _origemLocal };
-            var health = await client.GetAsync("/health");
+            var health = await client.GetAsync("/health", cancellationToken);
             if (!health.IsSuccessStatusCode)
                 throw new InvalidOperationException("O MySQL não respondeu corretamente.");
 
@@ -50,19 +54,26 @@ public partial class MainWindow : Window
                 "webview");
             var ambiente = await CoreWebView2Environment.CreateAsync(userDataFolder: cache);
             await Browser.EnsureCoreWebView2Async(ambiente);
+            cancellationToken.ThrowIfCancellationRequested();
             ConfigurarWebView(Browser.CoreWebView2);
             Browser.CoreWebView2.Navigate(_origemLocal.ToString());
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception ex)
         {
-            MessageBox.Show(
-                "Não foi possível abrir o GameLife.\n\n" + ex.Message +
-                "\n\nVerifique se o MySQL e o Microsoft Edge WebView2 Runtime estão instalados.",
-                "GameLife",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
             await PararAplicacaoAsync();
-            Application.Current.Shutdown(1);
+            if (!_encerrando)
+            {
+                MessageBox.Show(
+                    "Não foi possível abrir o GameLife.\n\n" + ex.Message +
+                    "\n\nVerifique se o MySQL e o Microsoft Edge WebView2 Runtime estão instalados.",
+                    "GameLife",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                Application.Current.Shutdown(1);
+            }
         }
     }
 
@@ -72,6 +83,11 @@ public partial class MainWindow : Window
         web.Settings.AreDefaultContextMenusEnabled = false;
         web.Settings.IsStatusBarEnabled = false;
         web.NavigationStarting += (_, args) =>
+        {
+            if (_origemLocal is null || !LocalNavigation.EhPermitida(_origemLocal, args.Uri))
+                args.Cancel = true;
+        };
+        web.FrameNavigationStarting += (_, args) =>
         {
             if (_origemLocal is null || !LocalNavigation.EhPermitida(_origemLocal, args.Uri))
                 args.Cancel = true;
@@ -86,17 +102,34 @@ public partial class MainWindow : Window
         e.Cancel = true;
         _encerrando = true;
         IsEnabled = false;
-        Browser.Dispose();
-        await PararAplicacaoAsync();
-        Application.Current.Shutdown();
+        try
+        {
+            await _lifecycle.EncerrarAsync(PararAplicacaoAsync);
+        }
+        finally
+        {
+            Browser.Dispose();
+            _lifecycle.Dispose();
+            _pararGate.Dispose();
+            Application.Current.Shutdown();
+        }
     }
 
     private async Task PararAplicacaoAsync()
     {
-        if (_aplicacao is null) return;
-        using var limite = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await _aplicacao.StopAsync(limite.Token);
-        await _aplicacao.DisposeAsync();
-        _aplicacao = null;
+        await _pararGate.WaitAsync();
+        try
+        {
+            if (_aplicacao is null) return;
+            var aplicacao = _aplicacao;
+            _aplicacao = null;
+            using var limite = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await aplicacao.StopAsync(limite.Token);
+            await aplicacao.DisposeAsync();
+        }
+        finally
+        {
+            _pararGate.Release();
+        }
     }
 }
