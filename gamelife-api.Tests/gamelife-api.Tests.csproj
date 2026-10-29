@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>gamelife_api.Tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\gamelife-api\gamelife-api.csproj" />
+    <ProjectReference Include="..\GameLife.Desktop\GameLife.Desktop.csproj" />
   </ItemGroup>
 
 </Project>
