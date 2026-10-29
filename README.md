@@ -1,6 +1,6 @@
 # GameLife
 
-Aplicação local para organizar uma biblioteca de jogos, com frontend React, API .NET 10 e persistência no MySQL.
+Aplicativo desktop para organizar uma biblioteca de jogos, com janela WPF/WebView2, frontend React, API .NET 10 e persistência no MySQL.
 
 ## Usar no Windows
 
@@ -8,9 +8,11 @@ Aplicação local para organizar uma biblioteca de jogos, com frontend React, AP
 2. Configure `ConnectionStrings:GameLife` nos User Secrets do projeto da API.
 3. Execute `scripts\publish-local.ps1` para compilar, testar e publicar o aplicativo.
 4. Execute `scripts\create-shortcut.ps1` para criar o atalho `GameLife` na Área de Trabalho.
-5. Abra o GameLife pelo atalho. A aplicação iniciará em segundo plano e abrirá no navegador padrão.
+5. Abra o GameLife pelo atalho. O aplicativo abrirá em uma janela própria, sem iniciar o navegador padrão.
 
-Os dados ficam no MySQL e permanecem salvos depois de fechar o navegador ou reiniciar o computador. A configuração local fica em `%LOCALAPPDATA%\GameLife\appsettings.Local.json` e não deve ser adicionada ao Git.
+Os dados ficam no MySQL e permanecem salvos depois de fechar o aplicativo ou reiniciar o computador. Fechar a janela encerra somente o GameLife; não apaga nem recria o banco. A configuração local fica em `%LOCALAPPDATA%\GameLife\appsettings.Local.json` e não deve ser adicionada ao Git.
+
+O Microsoft Edge WebView2 Runtime deve estar instalado. Ele já acompanha normalmente o Windows 10/11 e é usado apenas para renderizar a interface dentro da janela do GameLife.
 
 ## Backup
 
@@ -22,5 +24,5 @@ Para restaurar, use o MySQL Workbench ou o cliente `mysql` apontando para o banc
 
 - API: `dotnet run --project gamelife-api\gamelife-api.csproj`
 - Testes da API: `dotnet test gamelife-api.slnx`
-- Frontend: execute `npm start` em `D:\Projetos\gamelife-web`
-- Testes do frontend: `npm test`
+- Frontend: execute `npm run dev` em `D:\Projetos\gamelife-web`
+- Testes do frontend: `npm test -- --run`

@@ -31,9 +31,9 @@ Push-Location $projectRoot
 try {
     Invoke-Checked { dotnet restore gamelife-api.slnx }
     Invoke-Checked { dotnet test gamelife-api.slnx --configuration Release --no-restore }
-    Invoke-Checked { dotnet restore gamelife-api\gamelife-api.csproj --runtime win-x64 }
+    Invoke-Checked { dotnet restore GameLife.Desktop\GameLife.Desktop.csproj --runtime win-x64 }
     Invoke-Checked {
-        dotnet publish gamelife-api\gamelife-api.csproj `
+        dotnet publish GameLife.Desktop\GameLife.Desktop.csproj `
             --configuration Release `
             --runtime win-x64 `
             --self-contained true `
