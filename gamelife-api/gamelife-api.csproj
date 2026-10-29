@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>gamelife_api</RootNamespace>
-    <AssemblyName>GameLife</AssemblyName>
+    <AssemblyName>GameLife.Api</AssemblyName>
     <UserSecretsId>c59ebefd-a1cb-4fe9-a8bd-3cb748f6c9b7</UserSecretsId>
   </PropertyGroup>
 
