@@ -5,7 +5,7 @@ Aplicativo desktop para organizar uma biblioteca de jogos, com janela WPF/WebVie
 ## Usar no Windows
 
 1. Confirme que o MySQL está instalado e iniciado.
-2. Configure `ConnectionStrings:GameLife` nos User Secrets do projeto da API.
+2. Configure `ConnectionStrings:GameLife` nos User Secrets de `src\GameLife.Api\GameLife.Api.csproj`.
 3. Execute `scripts\publish-local.ps1` para compilar, testar e publicar o aplicativo.
 4. Execute `scripts\create-shortcut.ps1` para criar o atalho `GameLife` na Área de Trabalho.
 5. Abra o GameLife pelo atalho. O aplicativo abrirá em uma janela própria, sem iniciar o navegador padrão.
@@ -22,7 +22,10 @@ Para restaurar, use o MySQL Workbench ou o cliente `mysql` apontando para o banc
 
 ## Desenvolvimento
 
-- API: `dotnet run --project gamelife-api\gamelife-api.csproj`
-- Testes da API: `dotnet test gamelife-api.slnx`
-- Frontend: execute `npm run dev` em `D:\Projetos\gamelife-web`
-- Testes do frontend: `npm test -- --run`
+Depois de clonar o repositório, restaure as dependências com `dotnet restore GameLife.slnx` e `npm ci`, executado dentro de `src\GameLife.Web`.
+
+- API: `dotnet run --project src\GameLife.Api\GameLife.Api.csproj`
+- Testes .NET: `dotnet test GameLife.slnx`
+- Frontend: execute `npm run dev` dentro de `src\GameLife.Web`
+- Testes do frontend: execute `npm test` dentro de `src\GameLife.Web`
+- Publicação completa: `scripts\publish-local.ps1`

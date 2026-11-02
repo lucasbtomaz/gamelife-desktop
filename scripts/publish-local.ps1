@@ -1,48 +1,74 @@
+param([switch]$LibraryOnly)
+
 $ErrorActionPreference = 'Stop'
 
-$projectRoot = Split-Path $PSScriptRoot -Parent
-$webRoot = Join-Path (Split-Path $projectRoot -Parent) 'gamelife-web'
-$outputPath = Join-Path $projectRoot 'artifacts\GameLife'
+function Get-GameLifePublishPaths {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
 
-function Invoke-Checked {
-    param([scriptblock]$Command)
-
-    & $Command
-    if ($LASTEXITCODE -ne 0) {
-        throw "Comando falhou com código $LASTEXITCODE."
+    [pscustomobject]@{
+        ProjectRoot = $ProjectRoot
+        WebRoot = Join-Path $ProjectRoot 'src\GameLife.Web'
+        SolutionPath = Join-Path $ProjectRoot 'GameLife.slnx'
+        DesktopProject = Join-Path $ProjectRoot 'src\GameLife.Desktop\GameLife.Desktop.csproj'
+        OutputPath = Join-Path $ProjectRoot 'artifacts\GameLife'
     }
 }
 
-if (-not (Test-Path -LiteralPath (Join-Path $webRoot 'package.json'))) {
-    throw "Frontend não encontrado em '$webRoot'."
+function Get-GameLifePublishSteps {
+    param([Parameter(Mandatory)]$Paths)
+
+    @(
+        [pscustomobject]@{ Name = 'npm ci'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd ci } },
+        [pscustomobject]@{ Name = 'npm test'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd test } },
+        [pscustomobject]@{ Name = 'npm run build'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd run build } },
+        [pscustomobject]@{ Name = 'dotnet restore'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet restore $Paths.SolutionPath }.GetNewClosure() },
+        [pscustomobject]@{ Name = 'dotnet test'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet test $Paths.SolutionPath --configuration Release --no-restore }.GetNewClosure() },
+        [pscustomobject]@{ Name = 'dotnet publish'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet publish $Paths.DesktopProject --configuration Release --runtime win-x64 --self-contained true --output $Paths.OutputPath }.GetNewClosure() }
+    )
 }
 
-Push-Location $webRoot
-try {
-    Invoke-Checked { npm.cmd ci }
-    Invoke-Checked { npm.cmd test }
-    Invoke-Checked { npm.cmd run build }
-}
-finally {
-    Pop-Location
-}
+function Invoke-GameLifePublishStep {
+    param([Parameter(Mandatory)]$Step)
 
-Push-Location $projectRoot
-try {
-    Invoke-Checked { dotnet restore gamelife-api.slnx }
-    Invoke-Checked { dotnet test gamelife-api.slnx --configuration Release --no-restore }
-    Invoke-Checked { dotnet restore GameLife.Desktop\GameLife.Desktop.csproj --runtime win-x64 }
-    Invoke-Checked {
-        dotnet publish GameLife.Desktop\GameLife.Desktop.csproj `
-            --configuration Release `
-            --runtime win-x64 `
-            --self-contained true `
-            --no-restore `
-            --output $outputPath
+    Push-Location $Step.WorkingDirectory
+    try {
+        $global:LASTEXITCODE = 0
+        & $Step.Command | Out-Host
+        return [int]$global:LASTEXITCODE
+    }
+    finally {
+        Pop-Location
     }
 }
-finally {
-    Pop-Location
+
+function Invoke-GameLifePublish {
+    param(
+        [Parameter(Mandatory)]$Paths,
+        [scriptblock]$StepRunner
+    )
+
+    if ($null -eq $StepRunner) {
+        $StepRunner = {
+            param($step)
+            Invoke-GameLifePublishStep -Step $step
+        }
+    }
+
+    foreach ($step in Get-GameLifePublishSteps -Paths $Paths) {
+        $exitCode = & $StepRunner $step
+        if ($exitCode -ne 0) {
+            throw "A etapa '$($step.Name)' falhou com código $exitCode."
+        }
+    }
 }
 
-Write-Host "Publicação criada em '$outputPath'."
+if (-not $LibraryOnly) {
+    $projectRoot = Split-Path $PSScriptRoot -Parent
+    $paths = Get-GameLifePublishPaths -ProjectRoot $projectRoot
+    if (-not (Test-Path -LiteralPath (Join-Path $paths.WebRoot 'package.json'))) {
+        throw "Frontend não encontrado em '$($paths.WebRoot)'."
+    }
+
+    Invoke-GameLifePublish -Paths $paths
+    Write-Host "Publicação criada em '$($paths.OutputPath)'."
+}
