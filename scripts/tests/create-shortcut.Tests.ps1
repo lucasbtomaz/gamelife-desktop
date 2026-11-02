@@ -5,6 +5,13 @@ Describe 'Atalho desktop do GameLife' {
         . $scriptPath -LibraryOnly
     }
 
+    It 'usa o executável instalado em LocalApplicationData' {
+        $localData = Join-Path $TestDrive 'LocalAppData'
+
+        Get-GameLifeInstalledExecutablePath -LocalApplicationData $localData |
+            Should Be (Join-Path $localData 'GameLife\App\GameLife.exe')
+    }
+
     It 'aponta diretamente para o executável sem PowerShell ou argumentos' {
         $atalho = [pscustomobject]@{
             TargetPath = $null
@@ -25,6 +32,7 @@ Describe 'Atalho desktop do GameLife' {
         $atalho.TargetPath | Should Be $executavel
         $atalho.Arguments | Should BeNullOrEmpty
         $atalho.WorkingDirectory | Should Be (Split-Path $executavel -Parent)
+        $atalho.IconLocation | Should Be "$executavel,0"
         $atalho.Salvo | Should Be $true
     }
 }

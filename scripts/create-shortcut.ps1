@@ -1,10 +1,19 @@
-param([switch]$LibraryOnly)
+param(
+    [switch]$LibraryOnly,
+    [string]$ExecutablePath
+)
 
 $ErrorActionPreference = 'Stop'
 
-$projectRoot = Split-Path $PSScriptRoot -Parent
-$executablePath = Join-Path $projectRoot 'artifacts\GameLife\GameLife.exe'
 $launcherPath = Join-Path $PSScriptRoot 'start-local.ps1'
+
+function Get-GameLifeInstalledExecutablePath {
+    param(
+        [string]$LocalApplicationData = [Environment]::GetFolderPath('LocalApplicationData')
+    )
+
+    Join-Path $LocalApplicationData 'GameLife\App\GameLife.exe'
+}
 
 function New-GameLifeShortcut {
     param(
@@ -23,24 +32,27 @@ function New-GameLifeShortcut {
 }
 
 function Install-GameLifeShortcut {
-    if (-not (Test-Path -LiteralPath $executablePath)) {
+    param([Parameter(Mandatory)][string]$ExecutablePath)
+
+    if (-not (Test-Path -LiteralPath $ExecutablePath)) {
         throw "Executável não encontrado. Execute 'scripts\publish-local.ps1' primeiro."
     }
 
     . $launcherPath
     $connectionString = Get-GameLifeConnectionString
     $configurationPath = Save-GameLifeLocalConfiguration -ConnectionString $connectionString
-    $installedConfigurationPath = Join-Path (Split-Path $executablePath -Parent) 'appsettings.Local.json'
-    Copy-Item -LiteralPath $configurationPath -Destination $installedConfigurationPath -Force
     $desktopPath = [Environment]::GetFolderPath('Desktop')
     $shortcutPath = Join-Path $desktopPath 'GameLife.lnk'
     $shell = New-Object -ComObject WScript.Shell
-    New-GameLifeShortcut -ExecutablePath $executablePath -ShortcutPath $shortcutPath -Shell $shell
+    New-GameLifeShortcut -ExecutablePath $ExecutablePath -ShortcutPath $shortcutPath -Shell $shell
 
     Write-Host "Atalho criado em '$shortcutPath'."
     Write-Host "Configuração local criada em '$configurationPath'."
 }
 
 if (-not $LibraryOnly) {
-    Install-GameLifeShortcut
+    if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
+        $ExecutablePath = Get-GameLifeInstalledExecutablePath
+    }
+    Install-GameLifeShortcut -ExecutablePath $ExecutablePath
 }

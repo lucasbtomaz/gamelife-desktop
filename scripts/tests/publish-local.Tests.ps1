@@ -24,14 +24,7 @@ Describe 'Publicação local do monorepositório' {
             DesktopProject = 'desktop.csproj'; OutputPath = 'artifacts'
         }) -StepRunner $runner
 
-        @($calls) | Should Be @(
-            'npm ci',
-            'npm test',
-            'npm run build',
-            'dotnet restore',
-            'dotnet test',
-            'dotnet publish'
-        )
+        ($calls -join '|') | Should Be 'npm ci|npm test|npm run build|dotnet restore|dotnet test|dotnet publish|install local|create shortcut'
     }
 
     It 'interrompe antes do dotnet quando o build do React falha' {
@@ -56,7 +49,7 @@ Describe 'Publicação local do monorepositório' {
 
         $exception | Should Not BeNullOrEmpty
         $exception.Exception.Message | Should Match 'npm run build'
-        @($calls) | Should Be @('npm ci', 'npm test', 'npm run build')
+        ($calls -join '|') | Should Be 'npm ci|npm test|npm run build'
     }
 
     It 'separa a saída textual do código de saída da etapa' {

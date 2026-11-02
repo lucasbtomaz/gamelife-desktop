@@ -7,6 +7,7 @@ function Get-GameLifePublishPaths {
 
     [pscustomobject]@{
         ProjectRoot = $ProjectRoot
+        ScriptsRoot = Join-Path $ProjectRoot 'scripts'
         WebRoot = Join-Path $ProjectRoot 'src\GameLife.Web'
         SolutionPath = Join-Path $ProjectRoot 'GameLife.slnx'
         DesktopProject = Join-Path $ProjectRoot 'src\GameLife.Desktop\GameLife.Desktop.csproj'
@@ -23,7 +24,9 @@ function Get-GameLifePublishSteps {
         [pscustomobject]@{ Name = 'npm run build'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd run build } },
         [pscustomobject]@{ Name = 'dotnet restore'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet restore $Paths.SolutionPath }.GetNewClosure() },
         [pscustomobject]@{ Name = 'dotnet test'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet test $Paths.SolutionPath --configuration Release --no-restore }.GetNewClosure() },
-        [pscustomobject]@{ Name = 'dotnet publish'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet publish $Paths.DesktopProject --configuration Release --runtime win-x64 --self-contained true --output $Paths.OutputPath }.GetNewClosure() }
+        [pscustomobject]@{ Name = 'dotnet publish'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet publish $Paths.DesktopProject --configuration Release --runtime win-x64 --self-contained true --output $Paths.OutputPath }.GetNewClosure() },
+        [pscustomobject]@{ Name = 'install local'; WorkingDirectory = $Paths.ProjectRoot; Command = { & (Join-Path $Paths.ScriptsRoot 'install-local.ps1') -SourcePath $Paths.OutputPath }.GetNewClosure() },
+        [pscustomobject]@{ Name = 'create shortcut'; WorkingDirectory = $Paths.ProjectRoot; Command = { & (Join-Path $Paths.ScriptsRoot 'create-shortcut.ps1') }.GetNewClosure() }
     )
 }
 
