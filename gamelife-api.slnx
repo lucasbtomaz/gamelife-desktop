@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="gamelife-api.Tests/gamelife-api.Tests.csproj" />
-  <Project Path="gamelife-api/gamelife-api.csproj" />
-  <Project Path="GameLife.Desktop/GameLife.Desktop.csproj" />
-</Solution>

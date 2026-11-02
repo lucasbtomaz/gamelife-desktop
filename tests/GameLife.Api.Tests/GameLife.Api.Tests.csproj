@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\gamelife-api\gamelife-api.csproj" />
-    <ProjectReference Include="..\GameLife.Desktop\GameLife.Desktop.csproj" />
+    <ProjectReference Include="..\..\src\GameLife.Api\GameLife.Api.csproj" />
+    <ProjectReference Include="..\..\src\GameLife.Desktop\GameLife.Desktop.csproj" />
   </ItemGroup>
 
 </Project>
