@@ -48,9 +48,13 @@ public sealed class BibliotecaController : ControllerBase
         var titulo = request.Titulo.Trim();
         var plataforma = request.Plataforma.Trim();
 
-        var jogo = new Jogo { Titulo = titulo };
+        var tituloNormalizado = titulo.ToLower();
+        var jogo = await _contexto.Jogos
+            .FirstOrDefaultAsync(item => item.Titulo.Trim().ToLower() == tituloNormalizado, cancellationToken)
+            ?? new Jogo { Titulo = titulo };
+        var plataformaNormalizada = plataforma.ToLower();
         var canal = await _contexto.Canais
-            .FirstOrDefaultAsync(item => item.Nome == plataforma, cancellationToken);
+            .FirstOrDefaultAsync(item => item.Nome.Trim().ToLower() == plataformaNormalizada, cancellationToken);
 
         canal ??= new Canal
         {
@@ -58,6 +62,7 @@ public sealed class BibliotecaController : ControllerBase
             PermitePosse = true,
             PermitePreco = false
         };
+        canal.PermitePosse = true;
 
         var posse = new PosseJogo
         {

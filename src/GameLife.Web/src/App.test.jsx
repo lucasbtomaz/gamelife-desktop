@@ -17,7 +17,18 @@ test('carrega o início e permite abrir a biblioteca', async () => {
   expect(screen.getByText('Mídia física')).toBeInTheDocument();
   expect(screen.getByRole('option', { name: 'PlayStation 2' })).toBeInTheDocument();
   expect(screen.getByRole('option', { name: 'PlayStation 3' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'STEAM' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'EPIC' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Amazon Luna' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'GOG' })).toBeInTheDocument();
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/biblioteca'));
+});
+
+test('abre a Lista de Desejos pelo menu lateral', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /lista de desejos/i }));
+  expect(screen.getByRole('heading', { name: 'Lista de Desejos' })).toBeInTheDocument();
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/lista-desejos'));
 });
 
 test('adiciona um jogo pela API', async () => {

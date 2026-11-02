@@ -36,6 +36,47 @@ public sealed class LocalConfigurationTests : IDisposable
         Assert.Contains("configuração local", erro.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void ObterConnectionStringUsaCopiaInstaladaQuandoConfiguracaoPrincipalNaoExiste()
+    {
+        Directory.CreateDirectory(_diretorio);
+        var caminhoPrincipal = Path.Combine(_diretorio, "principal-inexistente.json");
+        var caminhoInstalado = Path.Combine(_diretorio, "appsettings.Local.json");
+        const string connectionString = "Server=localhost;Database=gamelife;User=usuario;Password=segredo";
+        File.WriteAllText(caminhoInstalado, $$"""
+        {
+          "ConnectionStrings": {
+            "GameLife": "{{connectionString}}"
+          }
+        }
+        """);
+
+        var resultado = LocalConfiguration.ObterConnectionString(
+            caminhoPrincipal,
+            caminhoInstalado);
+
+        Assert.Equal(connectionString, resultado);
+    }
+
+    [Fact]
+    public void ObterConnectionStringUsaCopiaInstaladaQuandoConfiguracaoPrincipalEstaVazia()
+    {
+        Directory.CreateDirectory(_diretorio);
+        var caminhoPrincipal = Path.Combine(_diretorio, "principal.json");
+        var caminhoInstalado = Path.Combine(_diretorio, "appsettings.Local.json");
+        File.WriteAllText(caminhoPrincipal, """{"ConnectionStrings":{"GameLife":""}}""");
+        const string connectionString = "Server=localhost;Database=gamelife;User=usuario;Password=segredo";
+        File.WriteAllText(
+            caminhoInstalado,
+            "{\"ConnectionStrings\":{\"GameLife\":\"" + connectionString + "\"}}");
+
+        var resultado = LocalConfiguration.ObterConnectionString(
+            caminhoPrincipal,
+            caminhoInstalado);
+
+        Assert.Equal(connectionString, resultado);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_diretorio))

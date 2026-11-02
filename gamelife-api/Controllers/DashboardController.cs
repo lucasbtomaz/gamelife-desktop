@@ -19,7 +19,7 @@ namespace gamelife_api.Controllers
         [HttpGet("stats")]
         public async Task<ActionResult<object>> ObterEstatisticas()
         {
-            var totalJogos = await _contexto.Jogos.CountAsync();
+            var totalJogos = await _contexto.PossesJogos.Select(item => item.JogoId).Distinct().CountAsync();
             var totalPosses = await _contexto.PossesJogos.CountAsync();
             var totalCanais = await _contexto.Canais.CountAsync();
             var totalListaDesejos = await _contexto.ItensListaDesejos.CountAsync();
@@ -52,7 +52,10 @@ namespace gamelife_api.Controllers
         public async Task<ActionResult<object>> ObterInicio(CancellationToken cancellationToken)
         {
             var perfil = await PerfilController.ObterOuCriarAsync(_contexto, cancellationToken);
-            var totalJogos = await _contexto.Jogos.CountAsync(cancellationToken);
+            var totalJogos = await _contexto.PossesJogos
+                .Select(item => item.JogoId)
+                .Distinct()
+                .CountAsync(cancellationToken);
             var midiasFisicas = await _contexto.PossesJogos.CountAsync(item => item.MidiaFisica, cancellationToken);
             var jogosDigitais = await _contexto.PossesJogos.CountAsync(item => !item.MidiaFisica, cancellationToken);
             var totalColecoes = await _contexto.Colecoes.CountAsync(cancellationToken);

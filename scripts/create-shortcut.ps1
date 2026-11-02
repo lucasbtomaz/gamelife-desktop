@@ -30,6 +30,8 @@ function Install-GameLifeShortcut {
     . $launcherPath
     $connectionString = Get-GameLifeConnectionString
     $configurationPath = Save-GameLifeLocalConfiguration -ConnectionString $connectionString
+    $installedConfigurationPath = Join-Path (Split-Path $executablePath -Parent) 'appsettings.Local.json'
+    Copy-Item -LiteralPath $configurationPath -Destination $installedConfigurationPath -Force
     $desktopPath = [Environment]::GetFolderPath('Desktop')
     $shortcutPath = Join-Path $desktopPath 'GameLife.lnk'
     $shell = New-Object -ComObject WScript.Shell

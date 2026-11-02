@@ -10,22 +10,29 @@ public static class LocalConfiguration
         "GameLife",
         "appsettings.Local.json");
 
-    public static string ObterConnectionString(string? caminho = null)
+    public static string ObterConnectionString(
+        string? caminho = null,
+        string? caminhoAlternativo = null)
     {
-        caminho ??= CaminhoPadrao;
-        if (!File.Exists(caminho))
-            throw new InvalidOperationException(
-                "A configuração local do MySQL não foi encontrada. Recrie o atalho do GameLife.");
+        var caminhoPrincipal = caminho ?? CaminhoPadrao;
+        if (caminho is null && caminhoAlternativo is null)
+            caminhoAlternativo = Path.Combine(AppContext.BaseDirectory, "appsettings.Local.json");
 
-        using var documento = JsonDocument.Parse(File.ReadAllText(caminho));
-        if (!documento.RootElement.TryGetProperty("ConnectionStrings", out var conexoes) ||
-            !conexoes.TryGetProperty("GameLife", out var valor) ||
-            string.IsNullOrWhiteSpace(valor.GetString()))
+        foreach (var candidato in new[] { caminhoPrincipal, caminhoAlternativo })
         {
-            throw new InvalidOperationException(
-                "A configuração local do MySQL está incompleta. Recrie o atalho do GameLife.");
+            if (string.IsNullOrWhiteSpace(candidato) || !File.Exists(candidato))
+                continue;
+
+            using var documento = JsonDocument.Parse(File.ReadAllText(candidato));
+            if (documento.RootElement.TryGetProperty("ConnectionStrings", out var conexoes) &&
+                conexoes.TryGetProperty("GameLife", out var valor) &&
+                !string.IsNullOrWhiteSpace(valor.GetString()))
+            {
+                return valor.GetString()!;
+            }
         }
 
-        return valor.GetString()!;
+        throw new InvalidOperationException(
+            "A configuração local do MySQL não foi encontrada ou está incompleta. Reinstale o GameLife.");
     }
 }
