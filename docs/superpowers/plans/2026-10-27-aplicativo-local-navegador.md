@@ -49,8 +49,8 @@
 ### Task 2: Alinhar a biblioteca do frontend à API
 
 **Files:**
-- Modify: `D:/Projetos/gamelife-web/src/App.js`
-- Modify: `D:/Projetos/gamelife-web/src/App.test.js`
+- Modify: `src/GameLife.Web/src/App.js`
+- Modify: `src/GameLife.Web/src/App.test.js`
 
 **Interfaces:**
 - Consumes: `GET/POST /api/jogos` e contratos reais de `JogosController`.
@@ -70,7 +70,7 @@
 - Create: `scripts/publish-local.ps1`
 
 **Interfaces:**
-- Consumes: build em `D:/Projetos/gamelife-web/build`.
+- Consumes: build em `src/GameLife.Web/build`.
 - Produces: `artifacts/GameLife/GameLife.exe` com `wwwroot` incorporado.
 
 - [ ] Criar teste de integração para `/` e fallback de rota React.

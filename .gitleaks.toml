@@ -1,0 +1,4 @@
+title = "GameLife"
+
+[extend]
+useDefault = true

@@ -10,6 +10,22 @@
 *.userosscache
 *.sln.docstates
 *.env
+.env.*
+!.env.example
+
+# GameLife local data and private imports
+**/appsettings.Local.json
+Backups/
+**/Backups/
+imports/
+*.xlsx
+*.xls
+*.csv
+*.sql
+*.db
+.superpowers/
+src/GameLife.Web/dist/
+src/GameLife.Web/build/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

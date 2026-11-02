@@ -334,7 +334,7 @@ git commit -m "feat: instalar GameLife com atalho local"
 
 - [ ] **Etapa 1: Escrever testes de segurança do repositório**
 
-Em `repository-safety.Tests.ps1`, executar `git ls-files` e rejeitar: `appsettings.Local.json`, `.env*` com valores, `*.xlsx`, `*.xls`, `*.csv` pessoais, `*.sql`, `*.db`, `Backups/`, `artifacts/`, `dist/`, `build/`, `bin/`, `obj/`, logs e arquivos com caminhos `C:\Users\`, `D:\Projetos\` ou `D:\Downloads\`.
+Em `repository-safety.Tests.ps1`, executar `git ls-files` e rejeitar: `appsettings.Local.json`, `.env*` com valores, `*.xlsx`, `*.xls`, `*.csv` pessoais, `*.sql`, `*.db`, `Backups/`, `artifacts/`, `dist/`, `build/`, `bin/`, `obj/`, logs e caminhos absolutos de perfis de usuário, projetos ou downloads locais.
 
 - [ ] **Etapa 2: Executar o teste e registrar falhas reais**
 

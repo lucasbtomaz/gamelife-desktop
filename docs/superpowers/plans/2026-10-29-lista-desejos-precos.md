@@ -129,12 +129,12 @@ Esperado: todos os testes aprovados e nenhuma avaliação client-side inesperada
 ### Tarefa 3: Criar a tela de cartões no React
 
 **Arquivos:**
-- Criar: `D:/Projetos/gamelife-web/src/screens/WishlistScreen.jsx`
-- Criar: `D:/Projetos/gamelife-web/src/screens/WishlistScreen.test.jsx`
-- Criar: `D:/Projetos/gamelife-web/src/api/wishlist.js`
-- Modificar: `D:/Projetos/gamelife-web/src/App.jsx`
-- Modificar: `D:/Projetos/gamelife-web/src/App.css`
-- Modificar: `D:/Projetos/gamelife-web/src/App.test.jsx`
+- Criar: `src/GameLife.Web/src/screens/WishlistScreen.jsx`
+- Criar: `src/GameLife.Web/src/screens/WishlistScreen.test.jsx`
+- Criar: `src/GameLife.Web/src/api/wishlist.js`
+- Modificar: `src/GameLife.Web/src/App.jsx`
+- Modificar: `src/GameLife.Web/src/App.css`
+- Modificar: `src/GameLife.Web/src/App.test.jsx`
 
 **Interfaces:**
 - Consome: endpoints agregados das tarefas 1 e 2.
