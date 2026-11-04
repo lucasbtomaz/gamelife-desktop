@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace gamelife_api.Services;
 
 public static class DashboardResumoCalculator
@@ -29,7 +32,7 @@ public static class DashboardResumoCalculator
     public static string NormalizarPlataforma(string nome)
     {
         var nomeLimpo = nome.Trim();
-        var comparacao = nomeLimpo.ToUpperInvariant();
+        var comparacao = RemoverDiacriticos(nomeLimpo).ToUpperInvariant();
 
         if (comparacao.StartsWith("PLAYSTATION") || comparacao == "PSN") return "PSN";
         if (comparacao.StartsWith("XBOX")) return "XBOX";
@@ -44,5 +47,13 @@ public static class DashboardResumoCalculator
         if (comparacao is "PLAY STORE" or "GOOGLE PLAY") return "PLAY STORE";
 
         return nomeLimpo;
+    }
+
+    private static string RemoverDiacriticos(string valor)
+    {
+        var caracteres = valor.Normalize(NormalizationForm.FormD)
+            .Where(caractere => CharUnicodeInfo.GetUnicodeCategory(caractere) != UnicodeCategory.NonSpacingMark)
+            .ToArray();
+        return new string(caracteres).Normalize(NormalizationForm.FormC);
     }
 }

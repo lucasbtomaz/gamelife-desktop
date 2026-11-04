@@ -22,6 +22,8 @@ public sealed class DashboardResumoCalculatorTests
     [InlineData("PlayStation 5", "PSN")]
     [InlineData("Xbox Series X|S", "XBOX")]
     [InlineData("Nintendo Switch", "NINTENDO")]
+    [InlineData("Épic", "EPIC")]
+    [InlineData("níntendo switch", "NINTENDO")]
     [InlineData("  Plataforma independente  ", "Plataforma independente")]
     public void NormalizaAliasesSemDescartarPlataformasDesconhecidas(string nome, string esperado)
     {

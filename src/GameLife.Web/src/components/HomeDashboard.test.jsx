@@ -46,6 +46,8 @@ test('apresenta o resumo vivo com plataformas e anos', () => {
   expect(screen.getAllByText('PSN')).toHaveLength(2);
   expect(screen.getAllByText('STEAM')).toHaveLength(2);
   expect(screen.getByRole('heading', { name: 'Total zerados por ano' })).toBeInTheDocument();
+  const gradeAnual = screen.getByRole('heading', { name: 'Total zerados por ano' }).parentElement.querySelector('.year-grid');
+  expect(gradeAnual).toHaveStyle({ gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))' });
   expect(screen.getByText('2024')).toBeInTheDocument();
   expect(screen.getByText('2025')).toBeInTheDocument();
 });

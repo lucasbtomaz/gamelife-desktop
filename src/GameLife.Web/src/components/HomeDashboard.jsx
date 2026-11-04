@@ -70,7 +70,7 @@ function HomeDashboard({ dashboard, perfil }) {
 
       <section className="panel-card yearly-panel">
         <h2>Total zerados por ano</h2>
-        <div className="year-grid">
+        <div className="year-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))' }}>
           {anos.map((item) => (
             <article className="year-stat" key={item.ano}>
               <span>{item.ano}</span>

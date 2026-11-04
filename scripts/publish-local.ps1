@@ -25,6 +25,7 @@ function Get-GameLifePublishSteps {
         [pscustomobject]@{ Name = 'npm run build'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd run build } },
         [pscustomobject]@{ Name = 'dotnet restore'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet restore $Paths.SolutionPath }.GetNewClosure() },
         [pscustomobject]@{ Name = 'dotnet test'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet test $Paths.SolutionPath --configuration Release --no-restore }.GetNewClosure() },
+        [pscustomobject]@{ Name = 'dotnet tool restore'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet tool restore } },
         [pscustomobject]@{
             Name = 'dotnet ef database update'
             WorkingDirectory = $Paths.ProjectRoot
