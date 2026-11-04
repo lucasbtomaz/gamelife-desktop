@@ -5,6 +5,21 @@ namespace gamelife_api.Tests.Configuration;
 public sealed class StartupConfigurationTests
 {
     [Fact]
+    public void UsaSqliteSomenteQuandoConfiguradoExplicitamente()
+    {
+        var sqlite = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DatabaseProvider"] = "Sqlite"
+            })
+            .Build();
+        var defaultConfiguration = new ConfigurationBuilder().Build();
+
+        Assert.Equal(GameLifeStartup.ProvedorSqlite, GameLifeStartup.ObterProvedor(sqlite));
+        Assert.Equal(GameLifeStartup.ProvedorMySql, GameLifeStartup.ObterProvedor(defaultConfiguration));
+    }
+
+    [Fact]
     public void InicializacaoSemConnectionStringFalhaComMensagemSegura()
     {
         var configuration = new ConfigurationBuilder().Build();

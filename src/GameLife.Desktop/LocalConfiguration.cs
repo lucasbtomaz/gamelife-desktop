@@ -6,9 +6,25 @@ namespace GameLife.Desktop;
 public static class LocalConfiguration
 {
     public static string CaminhoPadrao => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        "AppData",
+        "Local",
         "GameLife",
         "appsettings.Local.json");
+
+    public static string? TentarObterConnectionString(
+        string? caminho = null,
+        string? caminhoAlternativo = null)
+    {
+        try
+        {
+            return ObterConnectionString(caminho, caminhoAlternativo);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     public static string ObterConnectionString(
         string? caminho = null,

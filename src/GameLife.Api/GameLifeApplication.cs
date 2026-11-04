@@ -27,8 +27,14 @@ public static class GameLifeApplication
         });
 
         var connectionString = GameLifeStartup.ObterConnectionString(builder.Configuration);
+        var provider = GameLifeStartup.ObterProvedor(builder.Configuration);
         builder.Services.AddDbContext<GameLifeDbContext>(options =>
-            options.UseMySQL(connectionString));
+        {
+            if (provider == GameLifeStartup.ProvedorSqlite)
+                options.UseSqlite(connectionString);
+            else
+                options.UseMySQL(connectionString);
+        });
 
         configurarBuilder?.Invoke(builder);
 

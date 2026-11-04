@@ -5,7 +5,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$launcherPath = Join-Path $PSScriptRoot 'start-local.ps1'
 . (Join-Path $PSScriptRoot 'local-paths.ps1')
 
 function Get-GameLifeInstalledExecutablePath {
@@ -22,6 +21,10 @@ function New-GameLifeShortcut {
         [Parameter(Mandatory)][string]$ShortcutPath,
         [Parameter(Mandatory)]$Shell
     )
+
+    if (Test-Path -LiteralPath $ShortcutPath) {
+        Remove-Item -LiteralPath $ShortcutPath -Force
+    }
 
     $shortcut = $Shell.CreateShortcut($ShortcutPath)
     $shortcut.TargetPath = $ExecutablePath
@@ -49,23 +52,6 @@ function Install-GameLifeShortcut {
         -Shell $Shell
 }
 
-function Install-GameLifeConfiguration {
-    param([Parameter(Mandatory)][string]$InstalledExecutablePath)
-
-    . $launcherPath
-    $connectionString = Get-GameLifeConnectionString
-    $configurationPath = Save-GameLifeLocalConfiguration -ConnectionString $connectionString
-    $installedConfigurationPath = Join-Path `
-        (Split-Path $InstalledExecutablePath -Parent) `
-        'appsettings.Local.json'
-    Save-GameLifeLocalConfiguration `
-        -ConnectionString $connectionString `
-        -ConfigurationPath $installedConfigurationPath | Out-Null
-
-    Write-Host "Configuração local criada em '$configurationPath'."
-    Write-Host "Cópia de segurança criada em '$installedConfigurationPath'."
-}
-
 if (-not $LibraryOnly) {
     if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
         $ExecutablePath = Get-GameLifeInstalledExecutablePath
@@ -73,7 +59,6 @@ if (-not $LibraryOnly) {
     $desktopPath = Get-GameLifeDesktopPath
     $shortcutPath = Join-Path $desktopPath 'GameLife.lnk'
     $shell = New-Object -ComObject WScript.Shell
-    Install-GameLifeConfiguration -InstalledExecutablePath $ExecutablePath
     Install-GameLifeShortcut `
         -InstalledExecutablePath $ExecutablePath `
         -ShortcutPath $shortcutPath `

@@ -37,6 +37,16 @@ public sealed class LocalConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void TentarObterConnectionStringPermitePrimeiraInstalacaoSemMySql()
+    {
+        var caminho = Path.Combine(_diretorio, "inexistente.json");
+
+        var resultado = LocalConfiguration.TentarObterConnectionString(caminho);
+
+        Assert.Null(resultado);
+    }
+
+    [Fact]
     public void ObterConnectionStringUsaCopiaInstaladaQuandoConfiguracaoPrincipalNaoExiste()
     {
         Directory.CreateDirectory(_diretorio);

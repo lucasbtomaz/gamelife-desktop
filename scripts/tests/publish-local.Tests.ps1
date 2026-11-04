@@ -12,7 +12,6 @@ Describe 'Publicação local do monorepositório' {
 
         $paths.WebRoot | Should Be (Join-Path $root 'src\GameLife.Web')
         $paths.SolutionPath | Should Be (Join-Path $root 'GameLife.slnx')
-        $paths.ApiProject | Should Be (Join-Path $root 'src\GameLife.Api\GameLife.Api.csproj')
         $paths.DesktopProject | Should Be (Join-Path $root 'src\GameLife.Desktop\GameLife.Desktop.csproj')
         $paths.OutputPath | Should Be (Join-Path $root 'artifacts\GameLife')
         $paths.InstallPath | Should Be (Join-Path $localData 'GameLife\App')
@@ -41,7 +40,7 @@ Describe 'Publicação local do monorepositório' {
             DesktopProject = 'desktop.csproj'; OutputPath = 'artifacts'
         }) -StepRunner $runner
 
-        ($calls -join '|') | Should Be 'npm ci|npm test|npm run build|dotnet restore|dotnet test|dotnet tool restore|dotnet ef database update|dotnet publish|install local|create shortcut'
+        ($calls -join '|') | Should Be 'npm ci|npm test|npm run build|dotnet restore|dotnet test|dotnet publish|install local|create shortcut'
     }
 
     It 'interrompe antes do dotnet quando o build do React falha' {

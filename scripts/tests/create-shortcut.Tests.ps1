@@ -61,4 +61,29 @@ Describe 'Atalho desktop do GameLife' {
         $atalho.TargetPath | Should Be $executavel
         $atalho.Salvo | Should Be $true
     }
+
+    It 'remove o arquivo antigo antes de criar um novo atalho' {
+        $executavel = Join-Path $TestDrive 'GameLife.exe'
+        $caminhoAtalho = Join-Path $TestDrive 'GameLife.lnk'
+        Set-Content -LiteralPath $executavel -Value ''
+        Set-Content -LiteralPath $caminhoAtalho -Value 'atalho antigo'
+        $atalho = [pscustomobject]@{
+            TargetPath = $null
+            Arguments = $null
+            WorkingDirectory = $null
+            IconLocation = $null
+            Description = $null
+        }
+        $atalho | Add-Member -MemberType ScriptMethod -Name Save -Value { }
+        $shell = [pscustomobject]@{ Atalho = $atalho }
+        $shell | Add-Member -MemberType ScriptMethod -Name CreateShortcut -Value { param($caminho) $this.Atalho }
+
+        New-GameLifeShortcut `
+            -ExecutablePath $executavel `
+            -ShortcutPath $caminhoAtalho `
+            -Shell $shell
+
+        $caminhoAtalho | Should Not Exist
+        $atalho.TargetPath | Should Be $executavel
+    }
 }

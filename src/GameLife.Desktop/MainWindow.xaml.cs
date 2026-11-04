@@ -31,9 +31,20 @@ public partial class MainWindow : Window
         try
         {
             DesktopAssets.Validar(Path.Combine(AppContext.BaseDirectory, "wwwroot"));
-            var connectionString = LocalConfiguration.ObterConnectionString();
+            var databasePath = LocalDatabase.CaminhoPadrao;
+            var legacyConnectionString = File.Exists(databasePath)
+                ? null
+                : LocalConfiguration.TentarObterConnectionString();
+            await LocalDatabase.PrepararAsync(
+                databasePath,
+                legacyConnectionString,
+                cancellationToken);
+            var connectionString = LocalDatabase.ObterConnectionString(databasePath);
             _aplicacao = GameLifeApplication.Criar(
-                [$"--ConnectionStrings:GameLife={connectionString}"],
+                [
+                    $"--ConnectionStrings:GameLife={connectionString}",
+                    $"--DatabaseProvider={GameLifeStartup.ProvedorSqlite}"
+                ],
                 builder => builder.WebHost.UseUrls("http://127.0.0.1:0"));
 
             await _aplicacao.StartAsync(cancellationToken);
@@ -46,10 +57,12 @@ public partial class MainWindow : Window
             using var client = new HttpClient { BaseAddress = _origemLocal };
             var health = await client.GetAsync("/health", cancellationToken);
             if (!health.IsSuccessStatusCode)
-                throw new InvalidOperationException("O MySQL não respondeu corretamente.");
+                throw new InvalidOperationException("O banco local não respondeu corretamente.");
 
             var cache = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "AppData",
+                "Local",
                 "GameLife",
                 "webview");
             var ambiente = await CoreWebView2Environment.CreateAsync(userDataFolder: cache);
@@ -68,7 +81,7 @@ public partial class MainWindow : Window
             {
                 MessageBox.Show(
                     "Não foi possível abrir o GameLife.\n\n" + ex.Message +
-                    "\n\nVerifique se o MySQL e o Microsoft Edge WebView2 Runtime estão instalados.",
+                    "\n\nVerifique se o Microsoft Edge WebView2 Runtime está instalado.",
                     "GameLife",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
