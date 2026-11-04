@@ -59,7 +59,7 @@ public sealed class PerfilController : ControllerBase
     }
 
     private static PerfilResponse ParaResponse(PerfilLocal perfil)
-        => new(perfil.Id, perfil.Nome, perfil.FotoDataUrl, perfil.ExibirJogosRecentes);
+        => new(perfil.Id, perfil.Nome, perfil.FotoDataUrl, perfil.ExibirJogosRecentes, perfil.DataEntrada);
 }
 
 public sealed record AtualizarPerfilRequest(
@@ -67,4 +67,4 @@ public sealed record AtualizarPerfilRequest(
     string? FotoDataUrl,
     bool ExibirJogosRecentes);
 
-public sealed record PerfilResponse(int Id, string Nome, string? FotoDataUrl, bool ExibirJogosRecentes);
+public sealed record PerfilResponse(int Id, string Nome, string? FotoDataUrl, bool ExibirJogosRecentes, DateTime DataEntrada);

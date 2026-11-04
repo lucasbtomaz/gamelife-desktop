@@ -12,4 +12,6 @@ public sealed class PerfilLocal
     public string? FotoDataUrl { get; set; }
 
     public bool ExibirJogosRecentes { get; set; } = true;
+
+    public DateTime DataEntrada { get; set; } = new(2020, 9, 29);
 }

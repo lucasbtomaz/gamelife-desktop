@@ -187,6 +187,9 @@ namespace gamelife_api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("DataEntrada")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<bool>("ExibirJogosRecentes")
                         .HasColumnType("tinyint(1)");
 
