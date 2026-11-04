@@ -5,11 +5,11 @@ Describe 'Atalho desktop do GameLife' {
         . $scriptPath -LibraryOnly
     }
 
-    It 'usa o executável instalado em LocalApplicationData' {
-        $localData = Join-Path $TestDrive 'LocalAppData'
+    It 'usa o executavel publicado dentro do repositorio como o FinBot' {
+        $projectRoot = Join-Path $TestDrive 'GameLife'
 
-        Get-GameLifeInstalledExecutablePath -LocalApplicationData $localData |
-            Should Be (Join-Path $localData 'GameLife\App\GameLife.exe')
+        Get-GameLifePublishedExecutablePath -ProjectRoot $projectRoot |
+            Should Be (Join-Path $projectRoot 'artifacts\GameLife\GameLife.exe')
     }
 
     It 'aponta diretamente para o executável sem PowerShell ou argumentos' {

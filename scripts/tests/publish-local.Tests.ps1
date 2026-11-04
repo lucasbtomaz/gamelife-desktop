@@ -7,28 +7,22 @@ Describe 'Publicação local do monorepositório' {
 
     It 'resolve todos os caminhos dentro da raiz informada' {
         $root = Join-Path $TestDrive 'Gamelife'
-        $localData = Join-Path $TestDrive 'LocalAppData'
-        $paths = Get-GameLifePublishPaths -ProjectRoot $root -LocalApplicationData $localData
+        $paths = Get-GameLifePublishPaths -ProjectRoot $root
 
         $paths.WebRoot | Should Be (Join-Path $root 'src\GameLife.Web')
         $paths.SolutionPath | Should Be (Join-Path $root 'GameLife.slnx')
         $paths.DesktopProject | Should Be (Join-Path $root 'src\GameLife.Desktop\GameLife.Desktop.csproj')
         $paths.OutputPath | Should Be (Join-Path $root 'artifacts\GameLife')
-        $paths.InstallPath | Should Be (Join-Path $localData 'GameLife\App')
-        $paths.InstalledExecutablePath | Should Be (Join-Path $localData 'GameLife\App\GameLife.exe')
+        $paths.PublishedExecutablePath | Should Be (Join-Path $root 'artifacts\GameLife\GameLife.exe')
     }
 
-    It 'instala e cria o atalho usando o mesmo destino estavel' {
+    It 'cria o atalho apontando direto para a publicacao como o FinBot' {
         $root = Join-Path $TestDrive 'Gamelife'
-        $localData = Join-Path $TestDrive 'LocalAppData'
-        $paths = Get-GameLifePublishPaths -ProjectRoot $root -LocalApplicationData $localData
+        $paths = Get-GameLifePublishPaths -ProjectRoot $root
         $steps = @(Get-GameLifePublishSteps -Paths $paths)
-        $install = $steps | Where-Object Name -eq 'install local'
         $shortcut = $steps | Where-Object Name -eq 'create shortcut'
 
-        $install.DestinationPath | Should Be $paths.InstallPath
-        $shortcut.ExecutablePath | Should Be $paths.InstalledExecutablePath
-        (Split-Path $shortcut.ExecutablePath -Parent) | Should Be $install.DestinationPath
+        $shortcut.ExecutablePath | Should Be $paths.PublishedExecutablePath
     }
 
     It 'executa build e publicação na ordem obrigatória' {
@@ -40,7 +34,7 @@ Describe 'Publicação local do monorepositório' {
             DesktopProject = 'desktop.csproj'; OutputPath = 'artifacts'
         }) -StepRunner $runner
 
-        ($calls -join '|') | Should Be 'npm ci|npm test|npm run build|dotnet restore|dotnet test|dotnet publish|install local|create shortcut'
+        ($calls -join '|') | Should Be 'npm ci|npm test|npm run build|dotnet restore|dotnet test|dotnet publish|create shortcut'
     }
 
     It 'interrompe antes do dotnet quando o build do React falha' {

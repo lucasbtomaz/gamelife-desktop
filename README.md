@@ -9,7 +9,7 @@ Aplicativo desktop para organizar uma biblioteca de jogos, com janela WPF/WebVie
 
 Os dados ficam em `%LOCALAPPDATA%\GameLife\data\gamelife.db` e permanecem salvos depois de fechar o aplicativo ou reiniciar o computador. Fechar a janela encerra somente o GameLife; não apaga nem recria o banco.
 
-Os arquivos do aplicativo ficam em `%LOCALAPPDATA%\GameLife\App`. Atualizar o aplicativo substitui apenas essa pasta e preserva o banco na pasta `data`.
+Os arquivos do aplicativo ficam em `artifacts\GameLife`, seguindo o mesmo modelo do FinBot. O atalho aponta diretamente para `artifacts\GameLife\GameLife.exe`, enquanto o banco permanece separado em `%LOCALAPPDATA%\GameLife\data`.
 
 Quando encontra uma instalação antiga sem SQLite, o desktop copia uma única vez os dados do MySQL configurado para o banco local. Depois da cópia, o executável não depende do MySQL.
 

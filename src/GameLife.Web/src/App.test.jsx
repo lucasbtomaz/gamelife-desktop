@@ -24,6 +24,25 @@ test('carrega o início e permite abrir a biblioteca', async () => {
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/biblioteca'));
 });
 
+test('mostra no perfil lateral o total persistido do dashboard', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      perfil: { nome: 'Jogador', fotoDataUrl: null, exibirJogosRecentes: true },
+      resumo: { totalJogos: 18 },
+      bibliotecaPorPlataforma: [],
+      zeradosPorPlataforma: [],
+      zeradosPorAno: [],
+      jogosRecentes: [],
+      conquistas: []
+    })
+  });
+
+  render(<App />);
+
+  expect(await screen.findByText('18 jogos')).toBeInTheDocument();
+});
+
 test('abre a Lista de Desejos pelo menu lateral', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: /lista de desejos/i }));

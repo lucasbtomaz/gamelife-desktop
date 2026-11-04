@@ -7,12 +7,10 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'local-paths.ps1')
 
-function Get-GameLifeInstalledExecutablePath {
-    param(
-        [string]$LocalApplicationData = (Get-GameLifeLocalApplicationDataPath)
-    )
+function Get-GameLifePublishedExecutablePath {
+    param([string]$ProjectRoot = (Split-Path $PSScriptRoot -Parent))
 
-    Join-Path $LocalApplicationData 'GameLife\App\GameLife.exe'
+    Join-Path $ProjectRoot 'artifacts\GameLife\GameLife.exe'
 }
 
 function New-GameLifeShortcut {
@@ -54,7 +52,7 @@ function Install-GameLifeShortcut {
 
 if (-not $LibraryOnly) {
     if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
-        $ExecutablePath = Get-GameLifeInstalledExecutablePath
+        $ExecutablePath = Get-GameLifePublishedExecutablePath
     }
     $desktopPath = Get-GameLifeDesktopPath
     $shortcutPath = Join-Path $desktopPath 'GameLife.lnk'

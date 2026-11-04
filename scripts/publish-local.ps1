@@ -2,15 +2,8 @@ param([switch]$LibraryOnly)
 
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot 'local-paths.ps1')
-
 function Get-GameLifePublishPaths {
-    param(
-        [Parameter(Mandatory)][string]$ProjectRoot,
-        [string]$LocalApplicationData = (Get-GameLifeLocalApplicationDataPath)
-    )
-
-    $installPath = Join-Path $LocalApplicationData 'GameLife\App'
+    param([Parameter(Mandatory)][string]$ProjectRoot)
 
     [pscustomobject]@{
         ProjectRoot = $ProjectRoot
@@ -19,8 +12,7 @@ function Get-GameLifePublishPaths {
         SolutionPath = Join-Path $ProjectRoot 'GameLife.slnx'
         DesktopProject = Join-Path $ProjectRoot 'src\GameLife.Desktop\GameLife.Desktop.csproj'
         OutputPath = Join-Path $ProjectRoot 'artifacts\GameLife'
-        InstallPath = $installPath
-        InstalledExecutablePath = Join-Path $installPath 'GameLife.exe'
+        PublishedExecutablePath = Join-Path $ProjectRoot 'artifacts\GameLife\GameLife.exe'
     }
 }
 
@@ -35,22 +27,12 @@ function Get-GameLifePublishSteps {
         [pscustomobject]@{ Name = 'dotnet test'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet test $Paths.SolutionPath --configuration Release --no-restore }.GetNewClosure() },
         [pscustomobject]@{ Name = 'dotnet publish'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet publish $Paths.DesktopProject --configuration Release --runtime win-x64 --self-contained true --output $Paths.OutputPath }.GetNewClosure() },
         [pscustomobject]@{
-            Name = 'install local'
-            WorkingDirectory = $Paths.ProjectRoot
-            DestinationPath = $Paths.InstallPath
-            Command = {
-                & (Join-Path $Paths.ScriptsRoot 'install-local.ps1') `
-                    -SourcePath $Paths.OutputPath `
-                    -DestinationPath $Paths.InstallPath
-            }.GetNewClosure()
-        },
-        [pscustomobject]@{
             Name = 'create shortcut'
             WorkingDirectory = $Paths.ProjectRoot
-            ExecutablePath = $Paths.InstalledExecutablePath
+            ExecutablePath = $Paths.PublishedExecutablePath
             Command = {
                 & (Join-Path $Paths.ScriptsRoot 'create-shortcut.ps1') `
-                    -ExecutablePath $Paths.InstalledExecutablePath
+                    -ExecutablePath $Paths.PublishedExecutablePath
             }.GetNewClosure()
         }
     )

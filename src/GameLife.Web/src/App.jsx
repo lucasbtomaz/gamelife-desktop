@@ -27,6 +27,7 @@ function App() {
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
+  const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
 
   useEffect(() => {
     if (tela !== 'inicio') return;
@@ -159,13 +160,13 @@ function App() {
 
         <div className="sidebar-footer">
           {perfil.fotoDataUrl ? <img className="avatar profile-photo" src={perfil.fotoDataUrl} alt="Foto do perfil" /> : <span className="avatar">{perfil.nome?.slice(0, 2).toUpperCase()}</span>}
-          <span><strong>{perfil.nome || 'Jogador'}</strong><small>{itens.length} {itens.length === 1 ? 'jogo' : 'jogos'}</small></span>
+          <span><strong>{perfil.nome || 'Jogador'}</strong><small>{totalJogosPerfil} {totalJogosPerfil === 1 ? 'jogo' : 'jogos'}</small></span>
         </div>
       </aside>
 
       {tela === 'inicio' && <main id="inicio">
         <header className="page-header"><div><span className="eyebrow">VISÃO GERAL</span><h1>Início</h1><p>Seu espaço pessoal para acompanhar jogos e conquistas.</p></div></header>
-        {erroDashboard && <div className="feedback erro page-feedback" role="alert">Não foi possível carregar o resumo. Verifique se o MySQL está ativo.</div>}
+        {erroDashboard && <div className="feedback erro page-feedback" role="alert">Não foi possível carregar o resumo do banco local.</div>}
         <HomeDashboard dashboard={dashboard} perfil={perfil} />
       </main>}
 
