@@ -6,16 +6,26 @@ namespace GameLife.Desktop;
 
 public static class LocalDatabase
 {
-    public static string CaminhoPadrao => ObterCaminhoPadrao(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+    public static string CaminhoPadrao => ObterCaminhoPadrao(AppContext.BaseDirectory);
 
-    public static string ObterCaminhoPadrao(string userProfile) => Path.Combine(
-        userProfile,
+    public static string CaminhoLegado => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         "AppData",
         "Local",
         "GameLife",
         "data",
         "gamelife.db");
+
+    public static string ObterCaminhoPadrao(string baseDirectory)
+    {
+        var applicationDirectory = new DirectoryInfo(Path.GetFullPath(baseDirectory));
+        var projectRoot = applicationDirectory.Name.Equals("GameLife", StringComparison.OrdinalIgnoreCase) &&
+                          applicationDirectory.Parent?.Name.Equals("artifacts", StringComparison.OrdinalIgnoreCase) == true
+            ? applicationDirectory.Parent.Parent
+            : applicationDirectory;
+
+        return Path.Combine(projectRoot!.FullName, "data", "gamelife.db");
+    }
 
     public static string ObterConnectionString(string databasePath) =>
         $"Data Source={Path.GetFullPath(databasePath)};Foreign Keys=True;Pooling=False";
@@ -23,7 +33,8 @@ public static class LocalDatabase
     public static async Task PrepararAsync(
         string databasePath,
         string? legacyMySqlConnectionString,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? legacySqlitePath = null)
     {
         var fullPath = Path.GetFullPath(databasePath);
         var directory = Path.GetDirectoryName(fullPath)
@@ -39,6 +50,17 @@ public static class LocalDatabase
         {
             await using var local = new GameLifeDbContext(sqliteOptions);
             await local.Database.EnsureCreatedAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(legacySqlitePath) &&
+                File.Exists(legacySqlitePath) &&
+                !Path.GetFullPath(legacySqlitePath).Equals(fullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                var legacySqliteOptions = new DbContextOptionsBuilder<GameLifeDbContext>()
+                    .UseSqlite(ObterConnectionString(legacySqlitePath))
+                    .Options;
+                await using var legacySqlite = new GameLifeDbContext(legacySqliteOptions);
+                await LegacyDatabaseMigration.MesclarAsync(legacySqlite, local, cancellationToken);
+            }
 
             if (!databaseAlreadyExisted &&
                 !string.IsNullOrWhiteSpace(legacyMySqlConnectionString))

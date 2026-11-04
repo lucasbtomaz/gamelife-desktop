@@ -38,7 +38,8 @@ public partial class MainWindow : Window
             await LocalDatabase.PrepararAsync(
                 databasePath,
                 legacyConnectionString,
-                cancellationToken);
+                cancellationToken,
+                LocalDatabase.CaminhoLegado);
             var connectionString = LocalDatabase.ObterConnectionString(databasePath);
             _aplicacao = GameLifeApplication.Criar(
                 [

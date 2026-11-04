@@ -7,9 +7,9 @@ Aplicativo desktop para organizar uma biblioteca de jogos, com janela WPF/WebVie
 1. Execute `scripts\publish-local.ps1` para compilar, testar, instalar e criar o atalho `GameLife` na Área de Trabalho.
 2. Abra o GameLife pelo atalho. O aplicativo abrirá em uma janela própria, sem iniciar o navegador padrão.
 
-Os dados ficam em `%LOCALAPPDATA%\GameLife\data\gamelife.db` e permanecem salvos depois de fechar o aplicativo ou reiniciar o computador. Fechar a janela encerra somente o GameLife; não apaga nem recria o banco.
+Os dados ficam em `data\gamelife.db`, na raiz do projeto, e permanecem salvos depois de fechar o aplicativo ou reiniciar o computador. Fechar a janela encerra somente o GameLife; não apaga nem recria o banco.
 
-Os arquivos do aplicativo ficam em `artifacts\GameLife`, seguindo o mesmo modelo do FinBot. O atalho aponta diretamente para `artifacts\GameLife\GameLife.exe`, enquanto o banco permanece separado em `%LOCALAPPDATA%\GameLife\data`.
+Os arquivos do aplicativo ficam em `artifacts\GameLife`, seguindo o mesmo modelo do FinBot. O atalho aponta diretamente para `artifacts\GameLife\GameLife.exe`, enquanto o banco permanece separado em `data`.
 
 Quando encontra uma instalação antiga sem SQLite, o desktop copia uma única vez os dados do MySQL configurado para o banco local. Depois da cópia, o executável não depende do MySQL.
 
@@ -17,7 +17,7 @@ O Microsoft Edge WebView2 Runtime deve estar instalado. Ele já acompanha normal
 
 ## Backup
 
-Feche o GameLife e copie `%LOCALAPPDATA%\GameLife\data\gamelife.db` para `%LOCALAPPDATA%\GameLife\Backups`. Para restaurar, recoloque a cópia na pasta `data` com o nome `gamelife.db`.
+Feche o GameLife e copie `data\gamelife.db` para uma pasta segura. Para restaurar, recoloque a cópia na pasta `data` com o nome `gamelife.db`.
 
 ## Desenvolvimento
 

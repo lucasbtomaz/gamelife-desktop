@@ -13,7 +13,8 @@ Estas regras protegem o funcionamento local e os dados do usuário. Não altere 
 
 ## Persistência
 
-- O desktop usa somente o SQLite local em `%USERPROFILE%/AppData/Local/GameLife/data/gamelife.db`.
+- O desktop usa somente o SQLite local em `data/gamelife.db`, na raiz do repositório.
+- O caminho do banco não pode depender de `AppData`, pois o Windows pode virtualizar essa pasta e criar bancos diferentes para o mesmo aplicativo.
 - Nunca apagar, recriar, substituir ou mover esse banco durante build, teste, publicação ou atualização.
 - Os arquivos do executável e o banco devem permanecer em pastas separadas.
 - O MySQL é apenas uma origem legada para importação única; não é dependência para abrir o desktop.

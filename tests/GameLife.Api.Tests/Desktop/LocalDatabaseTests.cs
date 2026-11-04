@@ -12,14 +12,14 @@ public sealed class LocalDatabaseTests : IDisposable
         $"GameLifeLocalDatabase-{Guid.NewGuid():N}");
 
     [Fact]
-    public void ResolveBancoDentroDoPerfilDoUsuario()
+    public void ResolveBancoForaDaPastaDoExecutavelPublicado()
     {
-        var path = LocalDatabase.ObterCaminhoPadrao(Path.Combine(_directory, "Usuario"));
+        var projectRoot = Path.Combine(_directory, "Projeto");
+        var path = LocalDatabase.ObterCaminhoPadrao(
+            Path.Combine(projectRoot, "artifacts", "GameLife"));
 
-        Assert.EndsWith(
-            Path.Combine("AppData", "Local", "GameLife", "data", "gamelife.db"),
-            path,
-            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Path.Combine(projectRoot, "data", "gamelife.db"), path);
+        Assert.DoesNotContain(Path.Combine("artifacts", "GameLife", "data"), path);
     }
 
     [Fact]
@@ -74,6 +74,33 @@ public sealed class LocalDatabaseTests : IDisposable
         Assert.Equal(1, await destination.PossesJogos.CountAsync());
         Assert.Equal(1, await destination.RegistrosJogos.CountAsync());
         Assert.Equal(8.5m, await destination.RegistrosJogos.Select(item => item.TempoEmHoras).SingleAsync());
+    }
+
+    [Fact]
+    public async Task MesclaJogoDoBancoAntigoSemDuplicarOsExistentes()
+    {
+        var sourcePath = Path.Combine(_directory, "antigo.db");
+        var destinationPath = Path.Combine(_directory, "atual.db");
+        await using var source = NewContext(sourcePath);
+        await using var destination = NewContext(destinationPath);
+        await source.Database.EnsureCreatedAsync();
+        await destination.Database.EnsureCreatedAsync();
+
+        var sourceChannel = new Canal { Nome = "STEAM", PermitePosse = true };
+        var sourceGame = new Jogo { Titulo = "Jogo recuperado" };
+        source.PossesJogos.Add(new PosseJogo { Jogo = sourceGame, Canal = sourceChannel });
+        destination.Canais.Add(new Canal { Nome = "STEAM", PermitePosse = true });
+        destination.Jogos.Add(new Jogo { Titulo = "Jogo já salvo" });
+        await source.SaveChangesAsync();
+        await destination.SaveChangesAsync();
+
+        await LegacyDatabaseMigration.MesclarAsync(source, destination);
+        await LegacyDatabaseMigration.MesclarAsync(source, destination);
+
+        Assert.Equal(2, await destination.Jogos.CountAsync());
+        Assert.Equal(1, await destination.Canais.CountAsync());
+        Assert.Equal(1, await destination.PossesJogos.CountAsync());
+        Assert.Contains(await destination.Jogos.ToListAsync(), item => item.Titulo == "Jogo recuperado");
     }
 
     private static GameLifeDbContext NewContext(string path)
