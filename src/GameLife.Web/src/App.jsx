@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import './App.css';
+import HomeDashboard from './components/HomeDashboard.jsx';
 import WishlistScreen from './screens/WishlistScreen.jsx';
 
-const plataformas = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'Outra'];
+const plataformas = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'AMAZON PRIME', 'BLIZZARD', 'EA', 'NINTENDO', 'PSN', 'UBISOFT', 'XBOX', 'PLAY STORE', 'Outra'];
 
 const Icon = ({ children, size = 20 }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -165,13 +166,7 @@ function App() {
       {tela === 'inicio' && <main id="inicio">
         <header className="page-header"><div><span className="eyebrow">VISÃO GERAL</span><h1>Início</h1><p>Seu espaço pessoal para acompanhar jogos e conquistas.</p></div></header>
         {erroDashboard && <div className="feedback erro page-feedback" role="alert">Não foi possível carregar o resumo. Verifique se o MySQL está ativo.</div>}
-        <section className="dashboard-grid">
-          <div className="profile-card">{perfil.fotoDataUrl ? <img src={perfil.fotoDataUrl} alt="Foto do perfil" /> : <span className="large-avatar">{perfil.nome?.slice(0, 2).toUpperCase()}</span>}<div><span className="eyebrow">PERFIL LOCAL</span><h2>{perfil.nome || 'Jogador'}</h2></div></div>
-          <div className="stat-card"><strong>{dashboard?.resumo?.totalJogos ?? 0}</strong><span>Jogos</span></div>
-          <div className="stat-card"><strong>{dashboard?.resumo?.totalColecoes ?? 0}</strong><span>Coleções</span></div>
-          <div className="stat-card"><strong>{dashboard?.conquistas?.length ?? 0}</strong><span>Conquistas recentes</span></div>
-        </section>
-        <section className="home-columns">{perfil.exibirJogosRecentes && <div className="panel-card"><h2>Jogos recentes</h2>{dashboard?.jogosRecentes?.length ? dashboard.jogosRecentes.map((jogo) => <div className="simple-row" key={`${jogo.jogoId}-${jogo.adquiridoEm}`}><strong>{jogo.titulo}</strong><span>{jogo.plataforma}</span></div>) : <p>Nenhum jogo cadastrado ainda.</p>}</div>}<div className="panel-card"><h2>Troféus e conquistas</h2>{dashboard?.conquistas?.length ? dashboard.conquistas.map((item) => <div className="simple-row" key={item.id}><strong>{item.titulo}</strong><span>{item.tipo}</span></div>) : <p>Suas conquistas aparecerão aqui.</p>}</div></section>
+        <HomeDashboard dashboard={dashboard} perfil={perfil} />
       </main>}
 
       {tela === 'biblioteca' && <main id="biblioteca">
