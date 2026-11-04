@@ -35,4 +35,24 @@ Describe 'Atalho desktop do GameLife' {
         $atalho.IconLocation | Should Be "$executavel,0"
         $atalho.Salvo | Should Be $true
     }
+
+    It 'preserva o destino instalado ao carregar a configuracao local' {
+        $executavel = Join-Path $TestDrive 'GameLife instalado\GameLife.exe'
+        New-Item -ItemType Directory -Path (Split-Path $executavel -Parent) -Force | Out-Null
+        Set-Content -LiteralPath $executavel -Value ''
+        $script:destinoRecebido = $null
+
+        . $launcherPath
+        Mock Get-GameLifeConnectionString { 'conexao-de-teste' }
+        Mock Save-GameLifeLocalConfiguration { Join-Path $TestDrive 'appsettings.Local.json' }
+        Mock New-Object { [pscustomobject]@{} } -ParameterFilter { $ComObject -eq 'WScript.Shell' }
+        Mock New-GameLifeShortcut {
+            param($ExecutablePath)
+            $script:destinoRecebido = $ExecutablePath
+        }
+
+        Install-GameLifeShortcut -InstalledExecutablePath $executavel
+
+        $script:destinoRecebido | Should Be $executavel
+    }
 }

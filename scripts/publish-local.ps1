@@ -3,7 +3,12 @@ param([switch]$LibraryOnly)
 $ErrorActionPreference = 'Stop'
 
 function Get-GameLifePublishPaths {
-    param([Parameter(Mandatory)][string]$ProjectRoot)
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [string]$LocalApplicationData = [Environment]::GetFolderPath('LocalApplicationData')
+    )
+
+    $installPath = Join-Path $LocalApplicationData 'GameLife\App'
 
     [pscustomobject]@{
         ProjectRoot = $ProjectRoot
@@ -13,6 +18,8 @@ function Get-GameLifePublishPaths {
         ApiProject = Join-Path $ProjectRoot 'src\GameLife.Api\GameLife.Api.csproj'
         DesktopProject = Join-Path $ProjectRoot 'src\GameLife.Desktop\GameLife.Desktop.csproj'
         OutputPath = Join-Path $ProjectRoot 'artifacts\GameLife'
+        InstallPath = $installPath
+        InstalledExecutablePath = Join-Path $installPath 'GameLife.exe'
     }
 }
 
@@ -43,8 +50,25 @@ function Get-GameLifePublishSteps {
             }.GetNewClosure()
         },
         [pscustomobject]@{ Name = 'dotnet publish'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet publish $Paths.DesktopProject --configuration Release --runtime win-x64 --self-contained true --output $Paths.OutputPath }.GetNewClosure() },
-        [pscustomobject]@{ Name = 'install local'; WorkingDirectory = $Paths.ProjectRoot; Command = { & (Join-Path $Paths.ScriptsRoot 'install-local.ps1') -SourcePath $Paths.OutputPath }.GetNewClosure() },
-        [pscustomobject]@{ Name = 'create shortcut'; WorkingDirectory = $Paths.ProjectRoot; Command = { & (Join-Path $Paths.ScriptsRoot 'create-shortcut.ps1') }.GetNewClosure() }
+        [pscustomobject]@{
+            Name = 'install local'
+            WorkingDirectory = $Paths.ProjectRoot
+            DestinationPath = $Paths.InstallPath
+            Command = {
+                & (Join-Path $Paths.ScriptsRoot 'install-local.ps1') `
+                    -SourcePath $Paths.OutputPath `
+                    -DestinationPath $Paths.InstallPath
+            }.GetNewClosure()
+        },
+        [pscustomobject]@{
+            Name = 'create shortcut'
+            WorkingDirectory = $Paths.ProjectRoot
+            ExecutablePath = $Paths.InstalledExecutablePath
+            Command = {
+                & (Join-Path $Paths.ScriptsRoot 'create-shortcut.ps1') `
+                    -ExecutablePath $Paths.InstalledExecutablePath
+            }.GetNewClosure()
+        }
     )
 }
 

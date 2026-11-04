@@ -7,13 +7,29 @@ Describe 'Publicação local do monorepositório' {
 
     It 'resolve todos os caminhos dentro da raiz informada' {
         $root = Join-Path $TestDrive 'Gamelife'
-        $paths = Get-GameLifePublishPaths -ProjectRoot $root
+        $localData = Join-Path $TestDrive 'LocalAppData'
+        $paths = Get-GameLifePublishPaths -ProjectRoot $root -LocalApplicationData $localData
 
         $paths.WebRoot | Should Be (Join-Path $root 'src\GameLife.Web')
         $paths.SolutionPath | Should Be (Join-Path $root 'GameLife.slnx')
         $paths.ApiProject | Should Be (Join-Path $root 'src\GameLife.Api\GameLife.Api.csproj')
         $paths.DesktopProject | Should Be (Join-Path $root 'src\GameLife.Desktop\GameLife.Desktop.csproj')
         $paths.OutputPath | Should Be (Join-Path $root 'artifacts\GameLife')
+        $paths.InstallPath | Should Be (Join-Path $localData 'GameLife\App')
+        $paths.InstalledExecutablePath | Should Be (Join-Path $localData 'GameLife\App\GameLife.exe')
+    }
+
+    It 'instala e cria o atalho usando o mesmo destino estavel' {
+        $root = Join-Path $TestDrive 'Gamelife'
+        $localData = Join-Path $TestDrive 'LocalAppData'
+        $paths = Get-GameLifePublishPaths -ProjectRoot $root -LocalApplicationData $localData
+        $steps = @(Get-GameLifePublishSteps -Paths $paths)
+        $install = $steps | Where-Object Name -eq 'install local'
+        $shortcut = $steps | Where-Object Name -eq 'create shortcut'
+
+        $install.DestinationPath | Should Be $paths.InstallPath
+        $shortcut.ExecutablePath | Should Be $paths.InstalledExecutablePath
+        (Split-Path $shortcut.ExecutablePath -Parent) | Should Be $install.DestinationPath
     }
 
     It 'executa build e publicação na ordem obrigatória' {

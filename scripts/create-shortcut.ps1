@@ -32,9 +32,9 @@ function New-GameLifeShortcut {
 }
 
 function Install-GameLifeShortcut {
-    param([Parameter(Mandatory)][string]$ExecutablePath)
+    param([Parameter(Mandatory)][string]$InstalledExecutablePath)
 
-    if (-not (Test-Path -LiteralPath $ExecutablePath)) {
+    if (-not (Test-Path -LiteralPath $InstalledExecutablePath)) {
         throw "Executável não encontrado. Execute 'scripts\publish-local.ps1' primeiro."
     }
 
@@ -44,7 +44,7 @@ function Install-GameLifeShortcut {
     $desktopPath = [Environment]::GetFolderPath('Desktop')
     $shortcutPath = Join-Path $desktopPath 'GameLife.lnk'
     $shell = New-Object -ComObject WScript.Shell
-    New-GameLifeShortcut -ExecutablePath $ExecutablePath -ShortcutPath $shortcutPath -Shell $shell
+    New-GameLifeShortcut -ExecutablePath $InstalledExecutablePath -ShortcutPath $shortcutPath -Shell $shell
 
     Write-Host "Atalho criado em '$shortcutPath'."
     Write-Host "Configuração local criada em '$configurationPath'."
@@ -54,5 +54,5 @@ if (-not $LibraryOnly) {
     if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
         $ExecutablePath = Get-GameLifeInstalledExecutablePath
     }
-    Install-GameLifeShortcut -ExecutablePath $ExecutablePath
+    Install-GameLifeShortcut -InstalledExecutablePath $ExecutablePath
 }

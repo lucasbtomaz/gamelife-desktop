@@ -1,5 +1,6 @@
 param(
     [string]$SourcePath = (Join-Path (Split-Path $PSScriptRoot -Parent) 'artifacts\GameLife'),
+    [string]$DestinationPath,
     [switch]$LibraryOnly
 )
 
@@ -68,7 +69,9 @@ function Install-GameLifeFiles {
 }
 
 if (-not $LibraryOnly) {
-    $destination = Get-GameLifeInstallRoot
-    Install-GameLifeFiles -Source $SourcePath -Destination $destination | Out-Null
-    Write-Host "GameLife instalado em '$destination'."
+    if ([string]::IsNullOrWhiteSpace($DestinationPath)) {
+        $DestinationPath = Get-GameLifeInstallRoot
+    }
+    Install-GameLifeFiles -Source $SourcePath -Destination $DestinationPath | Out-Null
+    Write-Host "GameLife instalado em '$DestinationPath'."
 }
