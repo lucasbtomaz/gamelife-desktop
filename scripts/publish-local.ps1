@@ -10,6 +10,7 @@ function Get-GameLifePublishPaths {
         ScriptsRoot = Join-Path $ProjectRoot 'scripts'
         WebRoot = Join-Path $ProjectRoot 'src\GameLife.Web'
         SolutionPath = Join-Path $ProjectRoot 'GameLife.slnx'
+        ApiProject = Join-Path $ProjectRoot 'src\GameLife.Api\GameLife.Api.csproj'
         DesktopProject = Join-Path $ProjectRoot 'src\GameLife.Desktop\GameLife.Desktop.csproj'
         OutputPath = Join-Path $ProjectRoot 'artifacts\GameLife'
     }
@@ -24,6 +25,22 @@ function Get-GameLifePublishSteps {
         [pscustomobject]@{ Name = 'npm run build'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd run build } },
         [pscustomobject]@{ Name = 'dotnet restore'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet restore $Paths.SolutionPath }.GetNewClosure() },
         [pscustomobject]@{ Name = 'dotnet test'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet test $Paths.SolutionPath --configuration Release --no-restore }.GetNewClosure() },
+        [pscustomobject]@{
+            Name = 'dotnet ef database update'
+            WorkingDirectory = $Paths.ProjectRoot
+            Command = {
+                . (Join-Path $Paths.ScriptsRoot 'start-local.ps1')
+                $connectionString = Get-GameLifeConnectionString
+                $previousConnectionString = [Environment]::GetEnvironmentVariable('ConnectionStrings__GameLife', 'Process')
+                try {
+                    [Environment]::SetEnvironmentVariable('ConnectionStrings__GameLife', $connectionString, 'Process')
+                    dotnet ef database update --project $Paths.ApiProject --startup-project $Paths.ApiProject --configuration Release --no-build
+                }
+                finally {
+                    [Environment]::SetEnvironmentVariable('ConnectionStrings__GameLife', $previousConnectionString, 'Process')
+                }
+            }.GetNewClosure()
+        },
         [pscustomobject]@{ Name = 'dotnet publish'; WorkingDirectory = $Paths.ProjectRoot; Command = { dotnet publish $Paths.DesktopProject --configuration Release --runtime win-x64 --self-contained true --output $Paths.OutputPath }.GetNewClosure() },
         [pscustomobject]@{ Name = 'install local'; WorkingDirectory = $Paths.ProjectRoot; Command = { & (Join-Path $Paths.ScriptsRoot 'install-local.ps1') -SourcePath $Paths.OutputPath }.GetNewClosure() },
         [pscustomobject]@{ Name = 'create shortcut'; WorkingDirectory = $Paths.ProjectRoot; Command = { & (Join-Path $Paths.ScriptsRoot 'create-shortcut.ps1') }.GetNewClosure() }
