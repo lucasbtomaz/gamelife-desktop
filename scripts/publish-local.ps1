@@ -2,10 +2,12 @@ param([switch]$LibraryOnly)
 
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'local-paths.ps1')
+
 function Get-GameLifePublishPaths {
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
-        [string]$LocalApplicationData = [Environment]::GetFolderPath('LocalApplicationData')
+        [string]$LocalApplicationData = (Get-GameLifeLocalApplicationDataPath)
     )
 
     $installPath = Join-Path $LocalApplicationData 'GameLife\App'

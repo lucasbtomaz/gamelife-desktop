@@ -17,6 +17,17 @@ Describe 'Inicializador local do GameLife' {
         Test-GameLifeReady -HealthUrl 'http://127.0.0.1:5044' -TimeoutSeconds 0 | Should Be $true
     }
 
+    It 'salva uma copia da configuracao no caminho informado' {
+        $configurationPath = Join-Path $TestDrive 'App\appsettings.Local.json'
+
+        Save-GameLifeLocalConfiguration `
+            -ConnectionString 'Server=local;Database=gamelife' `
+            -ConfigurationPath $configurationPath | Out-Null
+
+        $configurationPath | Should Exist
+        (Get-Content -Raw -LiteralPath $configurationPath) | Should Match 'Server=local'
+    }
+
     It 'falha com mensagem clara quando o executável não existe' {
         $inexistente = Join-Path $TestDrive 'GameLife.exe'
         $exception = $null
@@ -59,6 +70,9 @@ Describe 'Inicializador local do GameLife' {
     It 'mostra uma mensagem quando a inicialização falha' {
         Mock Start-GameLife { throw 'Falha interna sensível.' }
         Mock Show-GameLifeError { }
+        Mock Get-GameLifeLocalConfigurationPath {
+            Join-Path $TestDrive 'GameLife\appsettings.Local.json'
+        }
 
         $exitCode = Invoke-GameLifeLauncher -ExecutablePath 'GameLife.exe' -NoBrowser
 

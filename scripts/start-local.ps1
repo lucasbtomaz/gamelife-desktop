@@ -6,8 +6,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'local-paths.ps1')
+
 function Get-GameLifeLocalConfigurationPath {
-    Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'GameLife\appsettings.Local.json'
+    param([string]$LocalApplicationData = (Get-GameLifeLocalApplicationDataPath))
+
+    Join-Path $LocalApplicationData 'GameLife\appsettings.Local.json'
 }
 
 function Get-GameLifeConnectionString {
@@ -32,15 +36,17 @@ function Get-GameLifeConnectionString {
 }
 
 function Save-GameLifeLocalConfiguration {
-    param([Parameter(Mandatory)][string]$ConnectionString)
+    param(
+        [Parameter(Mandatory)][string]$ConnectionString,
+        [string]$ConfigurationPath = (Get-GameLifeLocalConfigurationPath)
+    )
 
-    $path = Get-GameLifeLocalConfigurationPath
-    $directory = Split-Path $path -Parent
+    $directory = Split-Path $ConfigurationPath -Parent
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     @{ ConnectionStrings = @{ GameLife = $ConnectionString } } |
         ConvertTo-Json -Depth 3 |
-        Set-Content -LiteralPath $path -Encoding UTF8
-    return $path
+        Set-Content -LiteralPath $ConfigurationPath -Encoding UTF8
+    return $ConfigurationPath
 }
 
 function Test-GameLifeReady {

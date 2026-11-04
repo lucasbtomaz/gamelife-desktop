@@ -6,9 +6,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'local-paths.ps1')
+
 function Get-GameLifeInstallRoot {
     param(
-        [string]$LocalApplicationData = [Environment]::GetFolderPath('LocalApplicationData')
+        [string]$LocalApplicationData = (Get-GameLifeLocalApplicationDataPath)
     )
 
     Join-Path $LocalApplicationData 'GameLife\App'
@@ -41,6 +43,13 @@ function Install-GameLifeFiles {
     try {
         Copy-Item -LiteralPath $Source -Destination $staging -Recurse -Force
         Test-GameLifePublication -Path $staging
+
+        $installedConfiguration = Join-Path $Destination 'appsettings.Local.json'
+        if (Test-Path -LiteralPath $installedConfiguration) {
+            Copy-Item -LiteralPath $installedConfiguration `
+                -Destination (Join-Path $staging 'appsettings.Local.json') `
+                -Force
+        }
 
         if (Test-Path -LiteralPath $Destination) {
             Move-Item -LiteralPath $Destination -Destination $previous

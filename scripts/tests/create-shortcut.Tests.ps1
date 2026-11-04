@@ -36,23 +36,29 @@ Describe 'Atalho desktop do GameLife' {
         $atalho.Salvo | Should Be $true
     }
 
-    It 'preserva o destino instalado ao carregar a configuracao local' {
+    It 'instala o atalho no caminho explicito sem acessar a Area de Trabalho real' {
         $executavel = Join-Path $TestDrive 'GameLife instalado\GameLife.exe'
         New-Item -ItemType Directory -Path (Split-Path $executavel -Parent) -Force | Out-Null
         Set-Content -LiteralPath $executavel -Value ''
-        $script:destinoRecebido = $null
-
-        . $launcherPath
-        Mock Get-GameLifeConnectionString { 'conexao-de-teste' }
-        Mock Save-GameLifeLocalConfiguration { Join-Path $TestDrive 'appsettings.Local.json' }
-        Mock New-Object { [pscustomobject]@{} } -ParameterFilter { $ComObject -eq 'WScript.Shell' }
-        Mock New-GameLifeShortcut {
-            param($ExecutablePath)
-            $script:destinoRecebido = $ExecutablePath
+        $atalho = [pscustomobject]@{
+            TargetPath = $null
+            Arguments = $null
+            WorkingDirectory = $null
+            IconLocation = $null
+            Description = $null
+            Salvo = $false
         }
+        $atalho | Add-Member -MemberType ScriptMethod -Name Save -Value { $this.Salvo = $true }
+        $shell = [pscustomobject]@{ Atalho = $atalho }
+        $shell | Add-Member -MemberType ScriptMethod -Name CreateShortcut -Value { param($caminho) $this.Atalho }
+        $caminhoAtalho = Join-Path $TestDrive 'Desktop de teste\GameLife.lnk'
 
-        Install-GameLifeShortcut -InstalledExecutablePath $executavel
+        Install-GameLifeShortcut `
+            -InstalledExecutablePath $executavel `
+            -ShortcutPath $caminhoAtalho `
+            -Shell $shell
 
-        $script:destinoRecebido | Should Be $executavel
+        $atalho.TargetPath | Should Be $executavel
+        $atalho.Salvo | Should Be $true
     }
 }

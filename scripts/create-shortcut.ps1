@@ -6,10 +6,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $launcherPath = Join-Path $PSScriptRoot 'start-local.ps1'
+. (Join-Path $PSScriptRoot 'local-paths.ps1')
 
 function Get-GameLifeInstalledExecutablePath {
     param(
-        [string]$LocalApplicationData = [Environment]::GetFolderPath('LocalApplicationData')
+        [string]$LocalApplicationData = (Get-GameLifeLocalApplicationDataPath)
     )
 
     Join-Path $LocalApplicationData 'GameLife\App\GameLife.exe'
@@ -32,27 +33,50 @@ function New-GameLifeShortcut {
 }
 
 function Install-GameLifeShortcut {
-    param([Parameter(Mandatory)][string]$InstalledExecutablePath)
+    param(
+        [Parameter(Mandatory)][string]$InstalledExecutablePath,
+        [Parameter(Mandatory)][string]$ShortcutPath,
+        [Parameter(Mandatory)]$Shell
+    )
 
     if (-not (Test-Path -LiteralPath $InstalledExecutablePath)) {
         throw "Executável não encontrado. Execute 'scripts\publish-local.ps1' primeiro."
     }
 
+    New-GameLifeShortcut `
+        -ExecutablePath $InstalledExecutablePath `
+        -ShortcutPath $ShortcutPath `
+        -Shell $Shell
+}
+
+function Install-GameLifeConfiguration {
+    param([Parameter(Mandatory)][string]$InstalledExecutablePath)
+
     . $launcherPath
     $connectionString = Get-GameLifeConnectionString
     $configurationPath = Save-GameLifeLocalConfiguration -ConnectionString $connectionString
-    $desktopPath = [Environment]::GetFolderPath('Desktop')
-    $shortcutPath = Join-Path $desktopPath 'GameLife.lnk'
-    $shell = New-Object -ComObject WScript.Shell
-    New-GameLifeShortcut -ExecutablePath $InstalledExecutablePath -ShortcutPath $shortcutPath -Shell $shell
+    $installedConfigurationPath = Join-Path `
+        (Split-Path $InstalledExecutablePath -Parent) `
+        'appsettings.Local.json'
+    Save-GameLifeLocalConfiguration `
+        -ConnectionString $connectionString `
+        -ConfigurationPath $installedConfigurationPath | Out-Null
 
-    Write-Host "Atalho criado em '$shortcutPath'."
     Write-Host "Configuração local criada em '$configurationPath'."
+    Write-Host "Cópia de segurança criada em '$installedConfigurationPath'."
 }
 
 if (-not $LibraryOnly) {
     if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
         $ExecutablePath = Get-GameLifeInstalledExecutablePath
     }
-    Install-GameLifeShortcut -InstalledExecutablePath $ExecutablePath
+    $desktopPath = Get-GameLifeDesktopPath
+    $shortcutPath = Join-Path $desktopPath 'GameLife.lnk'
+    $shell = New-Object -ComObject WScript.Shell
+    Install-GameLifeConfiguration -InstalledExecutablePath $ExecutablePath
+    Install-GameLifeShortcut `
+        -InstalledExecutablePath $ExecutablePath `
+        -ShortcutPath $shortcutPath `
+        -Shell $shell
+    Write-Host "Atalho criado em '$shortcutPath'."
 }

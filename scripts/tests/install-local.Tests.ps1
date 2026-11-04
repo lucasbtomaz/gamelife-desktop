@@ -61,6 +61,21 @@ Describe 'Instalação local do GameLife' {
         (Join-Path $destination 'arquivo-antigo.txt') | Should Not Exist
     }
 
+    It 'preserva a copia da configuracao ao lado do executavel' {
+        $source = Join-Path $script:testRoot 'source'
+        $destination = Join-Path $script:testRoot 'GameLife\App'
+        New-TestPublication -Path $source
+        New-Item -ItemType Directory -Path $destination -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $destination 'GameLife.exe') -Value 'executável atual'
+        Set-Content -LiteralPath (Join-Path $destination 'appsettings.Local.json') `
+            -Value '{"ConnectionStrings":{"GameLife":"conexao-preservada"}}'
+
+        Install-GameLifeFiles -Source $source -Destination $destination
+
+        Get-Content -Raw (Join-Path $destination 'appsettings.Local.json') |
+            Should Match 'conexao-preservada'
+    }
+
     It 'rejeita uma publicação sem executável e mantém a instalação atual' {
         $source = Join-Path $script:testRoot 'source-invalida'
         $destination = Join-Path $script:testRoot 'GameLife\App'
