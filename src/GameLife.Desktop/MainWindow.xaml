@@ -8,6 +8,6 @@
         Height="850"
         MinWidth="900"
         MinHeight="620"
-        Background="#101D31">
+        Background="#080C14">
     <wv:WebView2 x:Name="Browser" />
 </Window>
