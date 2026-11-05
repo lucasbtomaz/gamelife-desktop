@@ -37,6 +37,25 @@ public sealed class LocalDatabaseTests : IDisposable
     }
 
     [Fact]
+    public async Task AtualizaBancoExistenteSemApagarDados()
+    {
+        var path = Path.Combine(_directory, "data", "existente.db");
+        await using (var antigo = NewContext(path))
+        {
+            await antigo.Database.EnsureCreatedAsync();
+            antigo.Jogos.Add(new Jogo { Titulo = "Jogo preservado" });
+            await antigo.SaveChangesAsync();
+            await antigo.Database.ExecuteSqlRawAsync("DROP TABLE AcompanhamentosJogos");
+        }
+
+        await LocalDatabase.PrepararAsync(path, legacyMySqlConnectionString: null);
+
+        await using var atualizado = NewContext(path);
+        Assert.Equal(1, await atualizado.Jogos.CountAsync());
+        Assert.Equal(0, await atualizado.AcompanhamentosJogos.CountAsync());
+    }
+
+    [Fact]
     public async Task CopiaDadosExistentesPreservandoRelacionamentos()
     {
         var sourcePath = Path.Combine(_directory, "origem.db");

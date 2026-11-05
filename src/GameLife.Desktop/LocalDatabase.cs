@@ -50,6 +50,7 @@ public static class LocalDatabase
         {
             await using var local = new GameLifeDbContext(sqliteOptions);
             await local.Database.EnsureCreatedAsync(cancellationToken);
+            await AtualizarEsquemaAsync(local, cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(legacySqlitePath) &&
                 File.Exists(legacySqlitePath) &&
@@ -78,5 +79,32 @@ public static class LocalDatabase
                 File.Delete(fullPath);
             throw;
         }
+    }
+
+    private static async Task AtualizarEsquemaAsync(
+        GameLifeDbContext contexto,
+        CancellationToken cancellationToken)
+    {
+        const string criarTabela = """
+            CREATE TABLE IF NOT EXISTS "AcompanhamentosJogos" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_AcompanhamentosJogos" PRIMARY KEY AUTOINCREMENT,
+                "JogoId" INTEGER NOT NULL,
+                "CanalId" INTEGER NOT NULL,
+                "PosseJogoId" INTEGER NULL,
+                "Status" INTEGER NOT NULL,
+                "DataStatus" TEXT NULL,
+                "TempoEmHoras" TEXT NULL,
+                "ConquistasPossiveis" INTEGER NULL,
+                "ConquistasObtidas" INTEGER NULL,
+                CONSTRAINT "FK_AcompanhamentosJogos_Jogos_JogoId" FOREIGN KEY ("JogoId") REFERENCES "Jogos" ("Id") ON DELETE RESTRICT,
+                CONSTRAINT "FK_AcompanhamentosJogos_Canais_CanalId" FOREIGN KEY ("CanalId") REFERENCES "Canais" ("Id") ON DELETE RESTRICT,
+                CONSTRAINT "FK_AcompanhamentosJogos_PossesJogos_PosseJogoId" FOREIGN KEY ("PosseJogoId") REFERENCES "PossesJogos" ("Id") ON DELETE RESTRICT
+            );
+            CREATE INDEX IF NOT EXISTS "IX_AcompanhamentosJogos_CanalId" ON "AcompanhamentosJogos" ("CanalId");
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_AcompanhamentosJogos_JogoId_CanalId" ON "AcompanhamentosJogos" ("JogoId", "CanalId");
+            CREATE INDEX IF NOT EXISTS "IX_AcompanhamentosJogos_PosseJogoId" ON "AcompanhamentosJogos" ("PosseJogoId");
+            """;
+
+        await contexto.Database.ExecuteSqlRawAsync(criarTabela, cancellationToken);
     }
 }

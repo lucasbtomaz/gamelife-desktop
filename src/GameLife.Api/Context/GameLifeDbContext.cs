@@ -20,6 +20,7 @@ namespace gamelife_api.Context
         public DbSet<Colecao> Colecoes { get; set; }
         public DbSet<ColecaoJogo> ColecoesJogos { get; set; }
         public DbSet<Conquista> Conquistas { get; set; }
+        public DbSet<AcompanhamentoJogo> AcompanhamentosJogos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -43,6 +44,28 @@ namespace gamelife_api.Context
                 .WithMany()
                 .HasForeignKey(item => item.JogoId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AcompanhamentoJogo>()
+                .HasIndex(item => new { item.JogoId, item.CanalId })
+                .IsUnique();
+
+            modelBuilder.Entity<AcompanhamentoJogo>()
+                .HasOne(item => item.Jogo)
+                .WithMany()
+                .HasForeignKey(item => item.JogoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AcompanhamentoJogo>()
+                .HasOne(item => item.Canal)
+                .WithMany()
+                .HasForeignKey(item => item.CanalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AcompanhamentoJogo>()
+                .HasOne(item => item.PosseJogo)
+                .WithMany()
+                .HasForeignKey(item => item.PosseJogoId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

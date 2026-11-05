@@ -19,6 +19,48 @@ namespace gamelife_api.Migrations
                 .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            modelBuilder.Entity("gamelife_api.Models.AcompanhamentoJogo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("CanalId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ConquistasObtidas")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ConquistasPossiveis")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DataStatus")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("JogoId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PosseJogoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TempoEmHoras")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CanalId");
+
+                    b.HasIndex("PosseJogoId");
+
+                    b.HasIndex("JogoId", "CanalId")
+                        .IsUnique();
+
+                    b.ToTable("AcompanhamentosJogos");
+                });
+
             modelBuilder.Entity("gamelife_api.Models.Canal", b =>
                 {
                     b.Property<int>("Id")
@@ -296,6 +338,32 @@ namespace gamelife_api.Migrations
                     b.HasIndex("ItemListaDesejosId");
 
                     b.ToTable("RegistrosPrecos");
+                });
+
+            modelBuilder.Entity("gamelife_api.Models.AcompanhamentoJogo", b =>
+                {
+                    b.HasOne("gamelife_api.Models.Canal", "Canal")
+                        .WithMany()
+                        .HasForeignKey("CanalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("gamelife_api.Models.Jogo", "Jogo")
+                        .WithMany()
+                        .HasForeignKey("JogoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("gamelife_api.Models.PosseJogo", "PosseJogo")
+                        .WithMany()
+                        .HasForeignKey("PosseJogoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Canal");
+
+                    b.Navigation("Jogo");
+
+                    b.Navigation("PosseJogo");
                 });
 
             modelBuilder.Entity("gamelife_api.Models.ColecaoJogo", b =>
