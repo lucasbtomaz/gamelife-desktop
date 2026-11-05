@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using gamelife_api.Context;
 using gamelife_api.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 
 namespace gamelife_api.Tests.Api;
 
@@ -25,18 +26,24 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
             var contexto = scope.ServiceProvider.GetRequiredService<GameLifeDbContext>();
-            contexto.RegistrosJogos.AddRange(
-                new RegistroJogo
+            contexto.AcompanhamentosJogos.AddRange(
+                new AcompanhamentoJogo
                 {
+                    JogoId = steam.JogoId,
+                    CanalId = await contexto.PossesJogos.Where(item => item.Id == steam.Id).Select(item => item.CanalId).SingleAsync(),
                     PosseJogoId = steam.Id,
-                    FinalizadoEm = new DateTime(2024, 6, 15, 20, 30, 0, DateTimeKind.Utc),
+                    Status = StatusAcompanhamentoJogo.Zerado,
+                    DataStatus = new DateTime(2024, 6, 15, 20, 30, 0, DateTimeKind.Utc),
                     TempoEmHoras = 31.5m,
                     ConquistasPossiveis = 100,
                     ConquistasObtidas = 69
                 },
-                new RegistroJogo
+                new AcompanhamentoJogo
                 {
+                    JogoId = playstation.JogoId,
+                    CanalId = await contexto.PossesJogos.Where(item => item.Id == playstation.Id).Select(item => item.CanalId).SingleAsync(),
                     PosseJogoId = playstation.Id,
+                    Status = StatusAcompanhamentoJogo.NaoTerminado,
                     TempoEmHoras = 120m
                 });
             await contexto.SaveChangesAsync();

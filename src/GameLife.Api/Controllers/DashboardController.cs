@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using gamelife_api.Context;
 using gamelife_api.Services;
+using gamelife_api.Models;
 
 namespace gamelife_api.Controllers
 {
@@ -25,9 +26,9 @@ namespace gamelife_api.Controllers
             var totalCanais = await _contexto.Canais.CountAsync();
             var totalListaDesejos = await _contexto.ItensListaDesejos.CountAsync();
 
-            var registros = await _contexto.RegistrosJogos.ToListAsync();
+            var registros = await _contexto.AcompanhamentosJogos.ToListAsync();
             var horasJogadas = registros.Sum(r => r.TempoEmHoras ?? 0);
-            var jogosZerados = registros.Count(r => r.FinalizadoEm != null);
+            var jogosZerados = registros.Count(r => r.Status == StatusAcompanhamentoJogo.Zerado);
             var conquistasObtidas = registros.Sum(r => r.ConquistasObtidas ?? 0);
             var conquistasPossiveis = registros.Sum(r => r.ConquistasPossiveis ?? 0);
             var taxaConclusao = conquistasPossiveis > 0 ? (int)Math.Round(((double)conquistasObtidas / conquistasPossiveis) * 100) : 0;
@@ -61,14 +62,15 @@ namespace gamelife_api.Controllers
                     Plataforma = item.Canal.Nome
                 })
                 .ToListAsync(cancellationToken);
-            var registros = await _contexto.RegistrosJogos.AsNoTracking()
+            var registros = await _contexto.AcompanhamentosJogos.AsNoTracking()
                 .Select(item => new
                 {
-                    item.FinalizadoEm,
+                    item.Status,
+                    item.DataStatus,
                     item.TempoEmHoras,
                     item.ConquistasPossiveis,
                     item.ConquistasObtidas,
-                    Plataforma = item.PosseJogo.Canal.Nome
+                    Plataforma = item.Canal.Nome
                 })
                 .ToListAsync(cancellationToken);
 
@@ -76,7 +78,7 @@ namespace gamelife_api.Controllers
             var midiasFisicas = posses.Count(item => item.MidiaFisica);
             var jogosDigitais = posses.Count(item => !item.MidiaFisica);
             var totalColecoes = await _contexto.Colecoes.CountAsync(cancellationToken);
-            var registrosFinalizados = registros.Where(item => item.FinalizadoEm.HasValue).ToList();
+            var registrosFinalizados = registros.Where(item => item.Status == StatusAcompanhamentoJogo.Zerado).ToList();
             var horasZeradas = registrosFinalizados.Sum(item => item.TempoEmHoras ?? 0);
             var conquistasPossiveis = registros.Sum(item => item.ConquistasPossiveis ?? 0);
             var conquistasObtidas = registros.Sum(item => item.ConquistasObtidas ?? 0);
@@ -93,14 +95,16 @@ namespace gamelife_api.Controllers
             var zeradosPorPlataforma = CriarDistribuicaoPlataformas(
                 registrosFinalizados.Select(item => item.Plataforma));
             var maiorAnoFinalizado = registrosFinalizados
-                .Select(item => item.FinalizadoEm!.Value.Year)
+                .Where(item => item.DataStatus.HasValue)
+                .Select(item => item.DataStatus!.Value.Year)
                 .DefaultIfEmpty(0)
                 .Max();
             var ultimoAno = Math.Max(
                 2043,
                 Math.Max(hoje.Year, maiorAnoFinalizado));
             var contagemPorAno = registrosFinalizados
-                .GroupBy(item => item.FinalizadoEm!.Value.Year)
+                .Where(item => item.DataStatus.HasValue)
+                .GroupBy(item => item.DataStatus!.Value.Year)
                 .ToDictionary(grupo => grupo.Key, grupo => grupo.Count());
             var zeradosPorAno = Enumerable.Range(2024, ultimoAno - 2024 + 1)
                 .Select(ano => new DashboardAnoResponse(ano, contagemPorAno.GetValueOrDefault(ano)))

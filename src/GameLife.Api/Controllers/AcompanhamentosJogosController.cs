@@ -34,16 +34,25 @@ public sealed class AcompanhamentosJogosController : ControllerBase
     [HttpGet("resumo")]
     public async Task<ActionResult<ResumoAcompanhamentosResponse>> ObterResumo(CancellationToken cancellationToken)
     {
-        var grupos = await _contexto.AcompanhamentosJogos.AsNoTracking()
-            .GroupBy(item => item.Status)
-            .Select(grupo => new { Status = grupo.Key, Quantidade = grupo.Count() })
+        var acompanhamentos = await _contexto.AcompanhamentosJogos.AsNoTracking()
+            .Select(item => new { item.JogoId, item.CanalId, item.Status })
             .ToListAsync(cancellationToken);
-        var total = grupos.Sum(item => item.Quantidade);
+        var posses = await _contexto.PossesJogos.AsNoTracking()
+            .Select(item => new { item.JogoId, item.CanalId })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var chavesAcompanhadas = acompanhamentos
+            .Select(item => (item.JogoId, item.CanalId))
+            .ToHashSet();
+        var zerados = acompanhamentos.Count(item => item.Status == StatusAcompanhamentoJogo.Zerado);
+        var dropados = acompanhamentos.Count(item => item.Status == StatusAcompanhamentoJogo.Dropado);
+        var naoTerminados = acompanhamentos.Count(item => item.Status == StatusAcompanhamentoJogo.NaoTerminado)
+            + posses.Count(item => !chavesAcompanhadas.Contains((item.JogoId, item.CanalId)));
         return Ok(new ResumoAcompanhamentosResponse(
-            total,
-            grupos.FirstOrDefault(item => item.Status == StatusAcompanhamentoJogo.Zerado)?.Quantidade ?? 0,
-            grupos.FirstOrDefault(item => item.Status == StatusAcompanhamentoJogo.Dropado)?.Quantidade ?? 0,
-            grupos.FirstOrDefault(item => item.Status == StatusAcompanhamentoJogo.NaoTerminado)?.Quantidade ?? 0));
+            zerados + dropados + naoTerminados,
+            zerados,
+            dropados,
+            naoTerminados));
     }
 
     [HttpPost]
