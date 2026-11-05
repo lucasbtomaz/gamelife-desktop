@@ -1,0 +1,171 @@
+using gamelife_api.Context;
+using gamelife_api.Contracts;
+using gamelife_api.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace gamelife_api.Controllers;
+
+[ApiController]
+[Route("api/acompanhamentos-jogos")]
+public sealed class AcompanhamentosJogosController : ControllerBase
+{
+    private readonly GameLifeDbContext _contexto;
+
+    public AcompanhamentosJogosController(GameLifeDbContext contexto) => _contexto = contexto;
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<AcompanhamentoJogoResponse>>> Obter(CancellationToken cancellationToken)
+    {
+        var registros = await _contexto.AcompanhamentosJogos.AsNoTracking()
+            .Include(item => item.Jogo)
+            .Include(item => item.Canal)
+            .OrderBy(item => item.Jogo.Titulo).ThenBy(item => item.Canal.Nome)
+            .ToListAsync(cancellationToken);
+        return Ok(registros.Select(Projetar).ToList());
+    }
+
+    [HttpGet("resumo")]
+    public async Task<ActionResult<ResumoAcompanhamentosResponse>> ObterResumo(CancellationToken cancellationToken)
+    {
+        var grupos = await _contexto.AcompanhamentosJogos.AsNoTracking()
+            .GroupBy(item => item.Status)
+            .Select(grupo => new { Status = grupo.Key, Quantidade = grupo.Count() })
+            .ToListAsync(cancellationToken);
+        var total = grupos.Sum(item => item.Quantidade);
+        return Ok(new ResumoAcompanhamentosResponse(
+            total,
+            grupos.FirstOrDefault(item => item.Status == StatusAcompanhamentoJogo.Zerado)?.Quantidade ?? 0,
+            grupos.FirstOrDefault(item => item.Status == StatusAcompanhamentoJogo.Dropado)?.Quantidade ?? 0,
+            grupos.FirstOrDefault(item => item.Status == StatusAcompanhamentoJogo.NaoTerminado)?.Quantidade ?? 0));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<AcompanhamentoJogoResponse>> Criar(
+        [FromBody] SalvarAcompanhamentoJogoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validacao = Validar(request);
+        if (validacao is not null) return validacao;
+
+        var (jogo, canal) = await ObterOuCriarReferencias(request, cancellationToken);
+        if (await ExisteCombinacao(jogo.Id, canal.Id, null, cancellationToken))
+            return Conflict(new ProblemDetails { Detail = "Este jogo já está sendo acompanhado nesta plataforma." });
+
+        var acompanhamento = new AcompanhamentoJogo { Jogo = jogo, Canal = canal };
+        await Aplicar(acompanhamento, request, jogo, canal, cancellationToken);
+        _contexto.AcompanhamentosJogos.Add(acompanhamento);
+        await _contexto.SaveChangesAsync(cancellationToken);
+        return Created($"/api/acompanhamentos-jogos/{acompanhamento.Id}", Responder(acompanhamento));
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<AcompanhamentoJogoResponse>> Atualizar(
+        int id,
+        [FromBody] SalvarAcompanhamentoJogoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validacao = Validar(request);
+        if (validacao is not null) return validacao;
+        var acompanhamento = await _contexto.AcompanhamentosJogos
+            .Include(item => item.Jogo).Include(item => item.Canal).Include(item => item.PosseJogo)
+            .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (acompanhamento is null) return NotFound();
+
+        var (jogo, canal) = await ObterOuCriarReferencias(request, cancellationToken);
+        if (await ExisteCombinacao(jogo.Id, canal.Id, id, cancellationToken))
+            return Conflict(new ProblemDetails { Detail = "Este jogo já está sendo acompanhado nesta plataforma." });
+
+        await Aplicar(acompanhamento, request, jogo, canal, cancellationToken);
+        await _contexto.SaveChangesAsync(cancellationToken);
+        return Ok(Responder(acompanhamento));
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Excluir(int id, CancellationToken cancellationToken)
+    {
+        var acompanhamento = await _contexto.AcompanhamentosJogos.FindAsync([id], cancellationToken);
+        if (acompanhamento is null) return NotFound();
+        _contexto.AcompanhamentosJogos.Remove(acompanhamento);
+        await _contexto.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    private ActionResult? Validar(SalvarAcompanhamentoJogoRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Titulo) || string.IsNullOrWhiteSpace(request.Plataforma))
+            return BadRequest(new ProblemDetails { Detail = "Informe o jogo e a plataforma." });
+        if (!Enum.TryParse<StatusAcompanhamentoJogo>(request.Status, true, out _))
+            return BadRequest(new ProblemDetails { Detail = "Informe um status válido." });
+        if (request.ConquistasObtidas.HasValue && !request.ConquistasPossiveis.HasValue)
+            return BadRequest(new ProblemDetails { Detail = "Informe as conquistas possíveis." });
+        if (request.ConquistasObtidas > request.ConquistasPossiveis)
+            return BadRequest(new ProblemDetails { Detail = "Conquistas obtidas não podem superar as possíveis." });
+        return null;
+    }
+
+    private async Task<(Jogo Jogo, Canal Canal)> ObterOuCriarReferencias(
+        SalvarAcompanhamentoJogoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var titulo = request.Titulo.Trim();
+        var plataforma = request.Plataforma.Trim();
+        var tituloNormalizado = titulo.ToLower();
+        var plataformaNormalizada = plataforma.ToLower();
+        var jogo = await _contexto.Jogos.FirstOrDefaultAsync(
+            item => item.Titulo.Trim().ToLower() == tituloNormalizado, cancellationToken)
+            ?? new Jogo { Titulo = titulo };
+        var canal = await _contexto.Canais.FirstOrDefaultAsync(
+            item => item.Nome.Trim().ToLower() == plataformaNormalizada, cancellationToken)
+            ?? new Canal { Nome = plataforma, PermitePosse = request.AdicionarBiblioteca };
+        if (jogo.Id == 0) _contexto.Jogos.Add(jogo);
+        if (canal.Id == 0) _contexto.Canais.Add(canal);
+        if (request.AdicionarBiblioteca) canal.PermitePosse = true;
+        await _contexto.SaveChangesAsync(cancellationToken);
+        return (jogo, canal);
+    }
+
+    private Task<bool> ExisteCombinacao(int jogoId, int canalId, int? ignorarId, CancellationToken cancellationToken) =>
+        _contexto.AcompanhamentosJogos.AnyAsync(
+            item => item.JogoId == jogoId && item.CanalId == canalId && (!ignorarId.HasValue || item.Id != ignorarId),
+            cancellationToken);
+
+    private async Task Aplicar(
+        AcompanhamentoJogo acompanhamento,
+        SalvarAcompanhamentoJogoRequest request,
+        Jogo jogo,
+        Canal canal,
+        CancellationToken cancellationToken)
+    {
+        acompanhamento.Jogo = jogo;
+        acompanhamento.JogoId = jogo.Id;
+        acompanhamento.Canal = canal;
+        acompanhamento.CanalId = canal.Id;
+        acompanhamento.Status = Enum.Parse<StatusAcompanhamentoJogo>(request.Status, true);
+        acompanhamento.DataStatus = request.DataStatus;
+        acompanhamento.TempoEmHoras = request.TempoEmHoras;
+        acompanhamento.ConquistasPossiveis = request.ConquistasPossiveis;
+        acompanhamento.ConquistasObtidas = request.ConquistasObtidas;
+
+        var posse = await _contexto.PossesJogos.FirstOrDefaultAsync(
+            item => item.JogoId == jogo.Id && item.CanalId == canal.Id, cancellationToken);
+        if (posse is null && request.AdicionarBiblioteca)
+        {
+            posse = new PosseJogo { Jogo = jogo, Canal = canal, MidiaFisica = false, AdquiridoEm = DateTime.UtcNow };
+            _contexto.PossesJogos.Add(posse);
+        }
+        acompanhamento.PosseJogo = posse;
+    }
+
+    private static AcompanhamentoJogoResponse Responder(AcompanhamentoJogo item) => new(
+        item.Id, item.JogoId, item.Jogo.Titulo, item.CanalId, item.Canal.Nome, item.Status.ToString(), item.DataStatus,
+        item.TempoEmHoras, item.ConquistasPossiveis, item.ConquistasObtidas, CalcularPercentual(item), item.PosseJogoId.HasValue || item.PosseJogo is not null);
+
+    private static AcompanhamentoJogoResponse Projetar(AcompanhamentoJogo item) => new(
+        item.Id, item.JogoId, item.Jogo.Titulo, item.CanalId, item.Canal.Nome, item.Status.ToString(), item.DataStatus,
+        item.TempoEmHoras, item.ConquistasPossiveis, item.ConquistasObtidas, CalcularPercentual(item), item.PosseJogoId.HasValue);
+
+    private static decimal CalcularPercentual(AcompanhamentoJogo item) => item.ConquistasPossiveis > 0
+        ? Math.Round((item.ConquistasObtidas ?? 0) * 100m / item.ConquistasPossiveis.Value, 0, MidpointRounding.AwayFromZero)
+        : 0;
+}
