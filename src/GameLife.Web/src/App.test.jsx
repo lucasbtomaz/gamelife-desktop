@@ -54,6 +54,7 @@ test('adiciona um jogo pela API', async () => {
   fetch
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 }) })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ id: '1', titulo: 'Hades', plataforma: 'PC' }) });
 
   render(<App />);
