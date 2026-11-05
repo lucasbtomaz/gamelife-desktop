@@ -110,6 +110,11 @@ namespace gamelife_api.Controllers
                 return NotFound(new { mensagem = $"Posse com ID {id} não encontrada." });
             }
 
+            var acompanhamentos = await _contexto.AcompanhamentosJogos
+                .Where(item => item.PosseJogoId == id)
+                .ToListAsync();
+            foreach (var acompanhamento in acompanhamentos)
+                acompanhamento.PosseJogoId = null;
             _contexto.PossesJogos.Remove(posse);
             await _contexto.SaveChangesAsync();
 

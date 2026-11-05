@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using gamelife_api.Controllers;
 
 namespace gamelife_api.Tests.Api;
 
@@ -92,13 +93,75 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
         Assert.Contains(biblioteca!, item => item.Titulo == titulo);
     }
 
+    [Fact]
+    public void NormalizaAcentosCaixaEEspacosComAMesmaChave()
+    {
+        Assert.Equal(
+            AcompanhamentosJogosController.NormalizarChave("  Éclipse  "),
+            AcompanhamentosJogosController.NormalizarChave("éCLIPSE"));
+    }
+
+    [Fact]
+    public async Task RejeitaStatusNumericoForaDosValoresPermitidos()
+    {
+        var resposta = await _client.PostAsJsonAsync("/api/acompanhamentos-jogos", new
+        {
+            titulo = $"Status inválido {Guid.NewGuid()}", plataforma = "PC", status = "999"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task ConflitoNaoAlteraCanalNemPersisteReferenciasParciais()
+    {
+        var titulo = $"Sem efeito parcial {Guid.NewGuid()}";
+        var plataforma = $"Canal {Guid.NewGuid()}";
+        await _client.PostAsJsonAsync("/api/acompanhamentos-jogos", Novo(titulo, plataforma));
+
+        var duplicado = await _client.PostAsJsonAsync("/api/acompanhamentos-jogos", Novo(titulo, plataforma, adicionarBiblioteca: true));
+
+        Assert.Equal(HttpStatusCode.Conflict, duplicado.StatusCode);
+        var canais = await _client.GetFromJsonAsync<List<CanalResponse>>("/api/canais");
+        Assert.False(canais!.Single(item => item.Nome == plataforma).PermitePosse);
+    }
+
+    [Fact]
+    public async Task ReconhecePosseAdicionadaDepoisEDesvinculaAoExcluiLa()
+    {
+        var titulo = $"Posse posterior {Guid.NewGuid()}";
+        await _client.PostAsJsonAsync("/api/acompanhamentos-jogos", Novo(titulo));
+        await _client.PostAsJsonAsync("/biblioteca", new { titulo, plataforma = "PC", midiaFisica = false });
+
+        var acompanhamentos = await _client.GetFromJsonAsync<List<AcompanhamentoResponse>>("/api/acompanhamentos-jogos");
+        Assert.True(acompanhamentos!.Single(item => item.Titulo == titulo).EstaNaBiblioteca);
+        var biblioteca = await _client.GetFromJsonAsync<List<ItemBibliotecaResponse>>("/biblioteca");
+        var posse = biblioteca!.Single(item => item.Titulo == titulo);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"/api/posses/{posse.Id}")).StatusCode);
+        acompanhamentos = await _client.GetFromJsonAsync<List<AcompanhamentoResponse>>("/api/acompanhamentos-jogos");
+        Assert.False(acompanhamentos!.Single(item => item.Titulo == titulo).EstaNaBiblioteca);
+    }
+
+    [Fact]
+    public async Task BloqueiaExclusaoDeJogoOuCanalAindaAcompanhado()
+    {
+        var titulo = $"Referências protegidas {Guid.NewGuid()}";
+        var resposta = await _client.PostAsJsonAsync("/api/acompanhamentos-jogos", Novo(titulo, "Outra"));
+        var criado = await resposta.Content.ReadFromJsonAsync<AcompanhamentoResponse>();
+
+        Assert.Equal(HttpStatusCode.Conflict, (await _client.DeleteAsync($"/api/jogos/{criado!.JogoId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await _client.DeleteAsync($"/api/canais/{criado.CanalId}")).StatusCode);
+    }
+
     private static object Novo(string titulo, string plataforma = "PC", bool adicionarBiblioteca = false) => new
     {
         titulo, plataforma, status = "Zerado", dataStatus = "2026-11-05",
         tempoEmHoras = 10.5m, conquistasPossiveis = 20, conquistasObtidas = 10, adicionarBiblioteca
     };
 
-    private sealed record AcompanhamentoResponse(int Id, string Status, decimal PercentualConquistas, bool EstaNaBiblioteca);
+    private sealed record AcompanhamentoResponse(int Id, int JogoId, string Titulo, int CanalId, string Plataforma, string Status, decimal PercentualConquistas, bool EstaNaBiblioteca);
     private sealed record ResumoResponse(int Total, int Zerados, int Dropados, int NaoTerminados);
     private sealed record ItemBibliotecaResponse(int Id, string Titulo, string Plataforma, bool MidiaFisica);
+    private sealed record CanalResponse(int Id, string Nome, bool PermitePosse);
 }

@@ -90,6 +90,9 @@ namespace gamelife_api.Controllers
                 return NotFound(new { mensagem = $"Canal com ID {id} não encontrado." });
             }
 
+            if (await _contexto.AcompanhamentosJogos.AnyAsync(item => item.CanalId == id))
+                return Conflict(new { mensagem = "Este canal possui acompanhamento e não pode ser excluído." });
+
             _contexto.Canais.Remove(canal);
             await _contexto.SaveChangesAsync();
 

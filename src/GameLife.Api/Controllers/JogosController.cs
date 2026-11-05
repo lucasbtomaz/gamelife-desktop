@@ -143,6 +143,9 @@ namespace gamelife_api.Controllers
                 return NotFound(new { mensagem = $"Jogo com ID {id} não encontrado." });
             }
 
+            if (await _contexto.AcompanhamentosJogos.AnyAsync(item => item.JogoId == id))
+                return Conflict(new { mensagem = "Este jogo possui acompanhamento e não pode ser excluído." });
+
             _contexto.Jogos.Remove(jogo);
             await _contexto.SaveChangesAsync();
 
