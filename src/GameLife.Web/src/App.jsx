@@ -4,6 +4,7 @@ import HomeDashboard from './components/HomeDashboard.jsx';
 import WishlistScreen from './screens/WishlistScreen.jsx';
 import GameTrackingScreen from './screens/GameTrackingScreen.jsx';
 import LibraryProgressSummary from './components/LibraryProgressSummary.jsx';
+import PainelRetrospectiva from './components/PainelRetrospectiva.jsx';
 
 const plataformas = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'AMAZON PRIME', 'BLIZZARD', 'EA', 'NINTENDO', 'PSN', 'UBISOFT', 'XBOX', 'PLAY STORE', 'Outra'];
 
@@ -162,6 +163,7 @@ function App() {
           </button>
           <button className={`nav-item ${tela === 'lista-desejos' ? 'active' : ''}`} onClick={() => setTela('lista-desejos')}>♡ Lista de Desejos</button>
           <button className={`nav-item ${tela === 'jogos-concluidos' ? 'active' : ''}`} onClick={() => setTela('jogos-concluidos')}>✓ Jogos concluídos</button>
+          <button className={`nav-item ${tela === 'retrospectiva' ? 'active' : ''}`} onClick={() => setTela('retrospectiva')}>🎧 Retrospectiva</button>
           <button className={`nav-item ${tela === 'colecoes' ? 'active' : ''}`} onClick={() => setTela('colecoes')}>▦ Coleções</button>
           <button className={`nav-item ${tela === 'configuracoes' ? 'active' : ''}`} onClick={() => setTela('configuracoes')}>⚙ Configurações</button>
         </nav>
@@ -258,6 +260,7 @@ function App() {
       {tela === 'lista-desejos' && <WishlistScreen />}
 
       {tela === 'jogos-concluidos' && <GameTrackingScreen />}
+      {tela === 'retrospectiva' && <PainelRetrospectiva />}
 
       {tela === 'colecoes' && <main id="colecoes"><header className="page-header"><div><span className="eyebrow">LISTAS PERSONALIZADAS</span><h1>Coleções</h1><p>Agrupe os jogos da biblioteca do seu jeito.</p></div></header>{mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<section className="content-grid"><div className="form-card"><h2>Nova coleção</h2><form onSubmit={criarColecao}><label htmlFor="nome-colecao">Nome</label><input id="nome-colecao" value={nomeColecao} onChange={(e) => setNomeColecao(e.target.value)} required /><label htmlFor="descricao-colecao">Descrição</label><input id="descricao-colecao" value={descricaoColecao} onChange={(e) => setDescricaoColecao(e.target.value)} /><button type="submit">Criar coleção</button></form></div><section className="collection-list">{colecoes.length === 0 ? <div className="panel-card"><h2>Nenhuma coleção</h2><p>Crie uma lista para organizar jogos por tema, prioridade ou momento.</p></div> : colecoes.map((colecao) => <article className="panel-card" key={colecao.id}><h2>{colecao.nome}</h2><p>{colecao.descricao}</p><label htmlFor={`jogo-${colecao.id}`}>Adicionar jogo</label><select id={`jogo-${colecao.id}`} defaultValue="" onChange={(e) => { adicionarNaColecao(colecao.id, e.target.value); e.target.value = ''; }}><option value="">Selecione da biblioteca</option>{itens.filter((jogo) => !colecao.jogos.some((v) => v.id === jogo.jogoId)).map((jogo) => <option key={jogo.jogoId} value={jogo.jogoId}>{jogo.titulo}</option>)}</select><div className="tag-list">{colecao.jogos.map((jogo) => <span key={jogo.id}>{jogo.titulo}</span>)}</div></article>)}</section></section></main>}
 
