@@ -31,7 +31,22 @@ function App() {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [resumoProgresso, setResumoProgresso] = useState({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 });
+  const [busca, setBusca] = useState('');
+
   const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
+
+  // Função para normalizar título para comparação anti-duplicidade
+  const normalizarTitulo = (str) => {
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/['’`"]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
 
   useEffect(() => {
     if (tela !== 'inicio') return;
@@ -46,7 +61,8 @@ function App() {
     if (tela !== 'biblioteca' && tela !== 'colecoes') return;
     const carregarBiblioteca = async () => {
       try {
-        const resposta = await fetch('/biblioteca');
+        const query = busca.trim() ? `?search=${encodeURIComponent(busca.trim())}` : '';
+        const resposta = await fetch(`/biblioteca${query}`);
         if (!resposta.ok) throw new Error();
         setItens(await resposta.json());
       } catch {
@@ -55,13 +71,14 @@ function App() {
         setCarregando(false);
       }
     };
-
     carregarBiblioteca();
-    fetch('/api/acompanhamentos-jogos/resumo')
-      .then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
-      .then(setResumoProgresso)
-      .catch(() => setMensagem({ tipo: 'erro', texto: 'A Biblioteca foi carregada, mas o resumo de progresso não está disponível.' }));
-  }, [tela]);
+    if (!busca) {
+      fetch('/api/acompanhamentos-jogos/resumo')
+        .then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
+        .then(setResumoProgresso)
+        .catch(() => setMensagem({ tipo: 'erro', texto: 'A Biblioteca foi carregada, mas o resumo de progresso não está disponível.' }));
+    }
+  }, [tela, busca]);
 
   useEffect(() => {
     if (tela !== 'colecoes') return;
@@ -80,9 +97,24 @@ function App() {
   const adicionarJogo = async (evento) => {
     evento.preventDefault();
     setMensagem(null);
-
-    if (!titulo.trim() || !plataforma) {
+    const tituloLimpo = titulo.trim();
+    if (!tituloLimpo || !plataforma) {
       setMensagem({ tipo: 'erro', texto: 'Preencha o nome do jogo e escolha uma plataforma.' });
+      return;
+    }
+
+    // Validação de duplicidade:
+    // Deve aceitar edições como "Remastered" ou "Remake", mas não diferenças de maiúsculas/minúsculas ou pontuações como jogo diferente
+    // Ex aceito: God of War III Remastered e God of War III
+    // Ex não deve aceitar: God of War III e god of war III
+    const normalizado = normalizarTitulo(tituloLimpo);
+    const duplicado = itens.find((item) => normalizarTitulo(item.titulo) === normalizado);
+
+    if (duplicado) {
+      setMensagem({
+        tipo: 'erro',
+        texto: `O jogo "${duplicado.titulo}" já está cadastrado. Variações apenas de maiúsculas/minúsculas, espaços ou pontuação não são permitidas.`
+      });
       return;
     }
 
@@ -91,12 +123,10 @@ function App() {
       const resposta = await fetch('/biblioteca', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulo: titulo.trim(), plataforma, midiaFisica })
+        body: JSON.stringify({ titulo: tituloLimpo, plataforma, midiaFisica })
       });
-
       const conteudo = await resposta.json().catch(() => ({}));
       if (!resposta.ok) throw new Error(conteudo.detail || 'Não foi possível adicionar o jogo.');
-
       setItens((atuais) => [...atuais, { ...conteudo, midiaFisica }].sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR')));
       setTitulo('');
       setPlataforma('');
@@ -122,11 +152,10 @@ function App() {
   const adicionarNaColecao = async (colecaoId, jogoId) => {
     if (!jogoId) return;
     try {
-      const resposta = await fetch(`/api/colecoes/${colecaoId}/jogos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jogoId: Number(jogoId) }) });
+      const resposta = await fetch(`/api/colecoes/${colecaoId}/jogos/${jogoId}`, { method: 'POST' });
       if (!resposta.ok) throw new Error();
-      const jogo = itens.find((item) => item.jogoId === Number(jogoId));
-      setColecoes((atuais) => atuais.map((item) => item.id === colecaoId ? { ...item, jogos: [...item.jogos, { id: Number(jogoId), titulo: jogo?.titulo }] } : item));
-      setMensagem(null);
+      const atualizada = await resposta.json();
+      setColecoes((atuais) => atuais.map((item) => item.id === atualizada.id ? atualizada : item));
     } catch { setMensagem({ tipo: 'erro', texto: 'Não foi possível adicionar o jogo à coleção.' }); }
   };
 
@@ -154,7 +183,6 @@ function App() {
           <span className="brand-mark"><Icon size={25}><path d="M7 6h10l3 9a2.3 2.3 0 0 1-4 2l-2-2h-4l-2 2a2.3 2.3 0 0 1-4-2z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></Icon></span>
           <span>Game<span>Life</span></span>
         </button>
-
         <nav aria-label="Menu principal">
           <button className={`nav-item ${tela === 'inicio' ? 'active' : ''}`} onClick={() => setTela('inicio')}>⌂ Início</button>
           <button className={`nav-item ${tela === 'biblioteca' ? 'active' : ''}`} onClick={() => setTela('biblioteca')}>
@@ -167,7 +195,6 @@ function App() {
           <button className={`nav-item ${tela === 'colecoes' ? 'active' : ''}`} onClick={() => setTela('colecoes')}>▦ Coleções</button>
           <button className={`nav-item ${tela === 'configuracoes' ? 'active' : ''}`} onClick={() => setTela('configuracoes')}>⚙ Configurações</button>
         </nav>
-
         <div className="sidebar-footer">
           {perfil.fotoDataUrl ? <img className="avatar profile-photo" src={perfil.fotoDataUrl} alt="Foto do perfil" /> : <span className="avatar">{perfil.nome?.slice(0, 2).toUpperCase()}</span>}
           <span><strong>{perfil.nome || 'Jogador'}</strong><small>{totalJogosPerfil} {totalJogosPerfil === 1 ? 'jogo' : 'jogos'}</small></span>
@@ -189,23 +216,19 @@ function App() {
           </div>
           <div className="collection-count"><strong>{itens.length}</strong><span>{itens.length === 1 ? 'jogo na coleção' : 'jogos na coleção'}</span></div>
         </header>
-
         <LibraryProgressSummary summary={resumoProgresso} />
-
         <section className="content-grid">
           <div className="form-card">
             <div className="card-heading">
               <span className="heading-icon"><Icon><path d="M12 5v14M5 12h14"/></Icon></span>
               <div><h2>Adicionar novo jogo</h2><p>Cadastre um jogo na sua coleção.</p></div>
             </div>
-
             <form onSubmit={adicionarJogo}>
               <label htmlFor="titulo">Nome do jogo</label>
               <div className="input-wrap">
                 <Icon><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></Icon>
                 <input id="titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength="200" placeholder="Ex.: The Legend of Zelda" autoComplete="off" />
               </div>
-
               <label htmlFor="plataforma">Plataforma</label>
               <div className="select-wrap">
                 <Icon><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></Icon>
@@ -214,16 +237,13 @@ function App() {
                   {plataformas.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </div>
-
               <label className={`media-type ${midiaFisica ? 'selected' : ''}`} htmlFor="midia-fisica">
                 <span className="disc-icon"><Icon size={22}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3a9 9 0 0 1 9 9"/></Icon></span>
                 <span><strong>Mídia física</strong><small>Marque se você possui uma cópia física deste jogo.</small></span>
                 <input id="midia-fisica" aria-label="Mídia física" className="media-checkbox" type="checkbox" checked={midiaFisica} onChange={(e) => setMidiaFisica(e.target.checked)} />
                 <span className="check" aria-hidden="true">{midiaFisica && <Icon size={15}><path d="m4 8 3 3 5-6"/></Icon>}</span>
               </label>
-
               {mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}
-
               <button type="submit" disabled={salvando}>
                 {salvando ? 'Adicionando...' : 'Adicionar à biblioteca'}
                 {!salvando && <Icon><path d="M5 12h14M13 6l6 6-6 6"/></Icon>}
@@ -232,15 +252,51 @@ function App() {
           </div>
 
           <section className="library-panel" aria-labelledby="meus-jogos">
-            <div className="library-heading"><div><span className="eyebrow">COLEÇÃO ATUAL</span><h2 id="meus-jogos">Meus jogos</h2></div><span className="pill">BIBLIOTECA</span></div>
+            <div className="library-heading">
+              <div>
+                <span className="eyebrow">COLEÇÃO ATUAL</span>
+                <h2 id="meus-jogos">Meus jogos</h2>
+              </div>
+              <span className="pill">BIBLIOTECA</span>
+            </div>
+
+            {/* Campo de Busca em Tempo Real da Coleção (?search=) */}
+            <div className="library-search-wrap">
+              <span className="search-icon"><Icon size={16}><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></Icon></span>
+              <input
+                id="busca-biblioteca"
+                type="text"
+                aria-label="Buscar títulos na coleção"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar jogos na coleção por título..."
+                autoComplete="off"
+              />
+              {busca && (
+                <button
+                  type="button"
+                  onClick={() => setBusca('')}
+                  className="clear-search-btn"
+                  aria-label="Limpar busca"
+                  title="Limpar busca"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
             {carregando ? (
               <div className="empty-state"><span className="loader"/><h3>Carregando coleção...</h3></div>
             ) : itens.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-illustration"><Icon size={50}><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></Icon></span>
-                <h3>Sua estante está esperando</h3>
-                <p>Adicione seu primeiro jogo usando o formulário ao lado.</p>
+                <h3>{busca ? `Nenhum jogo encontrado para "${busca}"` : 'Sua estante está esperando'}</h3>
+                <p>{busca ? 'Tente buscar com outro termo ou limpe o campo.' : 'Adicione seu primeiro jogo usando o formulário ao lado.'}</p>
+                {busca && (
+                  <button type="button" onClick={() => setBusca('')} className="btn-clean-filter">
+                    Limpar filtro
+                  </button>
+                )}
               </div>
             ) : (
               <div className="game-list">
@@ -258,7 +314,6 @@ function App() {
       </main>}
 
       {tela === 'lista-desejos' && <WishlistScreen />}
-
       {tela === 'jogos-concluidos' && <GameTrackingScreen />}
       {tela === 'retrospectiva' && <PainelRetrospectiva />}
 

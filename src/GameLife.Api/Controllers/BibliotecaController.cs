@@ -19,11 +19,17 @@ public sealed class BibliotecaController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ItemBibliotecaResponse>>> ObterItens(
+        [FromQuery] string? search,
         CancellationToken cancellationToken)
     {
-        var itens = await CriarConsulta(_contexto)
-            .ToListAsync(cancellationToken);
+        var consulta = CriarConsulta(_contexto);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var termo = search.Trim().ToLower();
+            consulta = consulta.Where(posse => posse.Titulo.ToLower().Contains(termo));
+        }
 
+        var itens = await consulta.ToListAsync(cancellationToken);
         return Ok(itens);
     }
 
@@ -40,6 +46,14 @@ public sealed class BibliotecaController : ControllerBase
                 posse.MidiaFisica));
     }
 
+    public static string NormalizarTitulo(string? titulo)
+    {
+        if (string.IsNullOrWhiteSpace(titulo)) return string.Empty;
+        var lower = titulo.Trim().ToLowerInvariant();
+        var chars = lower.Select(c => char.IsLetterOrDigit(c) ? c : ' ').ToArray();
+        return string.Join(" ", new string(chars).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+    }
+
     [HttpPost]
     public async Task<ActionResult<ItemBibliotecaResponse>> CriarItem(
         [FromBody] CriarItemBibliotecaRequest request,
@@ -47,11 +61,12 @@ public sealed class BibliotecaController : ControllerBase
     {
         var titulo = request.Titulo.Trim();
         var plataforma = request.Plataforma.Trim();
+        var tituloNormalizado = NormalizarTitulo(titulo);
 
-        var tituloNormalizado = titulo.ToLower();
-        var jogo = await _contexto.Jogos
-            .FirstOrDefaultAsync(item => item.Titulo.Trim().ToLower() == tituloNormalizado, cancellationToken)
+        var todosJogos = await _contexto.Jogos.ToListAsync(cancellationToken);
+        var jogo = todosJogos.FirstOrDefault(item => NormalizarTitulo(item.Titulo) == tituloNormalizado)
             ?? new Jogo { Titulo = titulo };
+
         var plataformaNormalizada = plataforma.ToLower();
         var canal = await _contexto.Canais
             .FirstOrDefaultAsync(item => item.Nome.Trim().ToLower() == plataformaNormalizada, cancellationToken);
@@ -62,6 +77,7 @@ public sealed class BibliotecaController : ControllerBase
             PermitePosse = true,
             PermitePreco = false
         };
+
         canal.PermitePosse = true;
 
         var posse = new PosseJogo
