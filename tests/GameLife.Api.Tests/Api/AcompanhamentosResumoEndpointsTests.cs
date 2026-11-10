@@ -28,7 +28,11 @@ public sealed class AcompanhamentosResumoEndpointsTests : IClassFixture<GameLife
 
     private async Task AdicionarBiblioteca(string titulo, string plataforma)
     {
-        var resposta = await _client.PostAsJsonAsync("/biblioteca", new { titulo, plataforma, midiaFisica = false });
+        var resposta = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[] { new { plataforma, midiaFisica = false } }
+        });
         resposta.EnsureSuccessStatusCode();
     }
 

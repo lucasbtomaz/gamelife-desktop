@@ -1,8 +1,7 @@
-using System.ComponentModel.DataAnnotations;
 using gamelife_api.Context;
-using gamelife_api.Models;
+using gamelife_api.Contracts;
+using gamelife_api.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace gamelife_api.Controllers;
 
@@ -10,79 +9,34 @@ namespace gamelife_api.Controllers;
 [Route("biblioteca")]
 public sealed class BibliotecaController : ControllerBase
 {
-    private readonly GameLifeDbContext _contexto;
+    private readonly BibliotecaService _service;
 
-    public BibliotecaController(GameLifeDbContext contexto)
-    {
-        _contexto = contexto;
-    }
+    public BibliotecaController(BibliotecaService service) => _service = service;
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ItemBibliotecaResponse>>> ObterItens(
-        CancellationToken cancellationToken)
-    {
-        var itens = await CriarConsulta(_contexto)
-            .ToListAsync(cancellationToken);
+    public async Task<ActionResult<IReadOnlyList<JogoBibliotecaResponse>>> ObterItens(
+        CancellationToken cancellationToken) =>
+        Ok(await _service.ObterAsync(cancellationToken));
 
-        return Ok(itens);
-    }
-
-    public static IQueryable<ItemBibliotecaResponse> CriarConsulta(GameLifeDbContext contexto)
-    {
-        return contexto.PossesJogos
-            .AsNoTracking()
-            .OrderBy(posse => posse.Jogo.Titulo)
-            .Select(posse => new ItemBibliotecaResponse(
-                posse.Id,
-                posse.JogoId,
-                posse.Jogo.Titulo,
-                posse.Canal.Nome,
-                posse.MidiaFisica));
-    }
+    public static IQueryable<ItemBibliotecaPlataformaProjection> CriarConsulta(
+        GameLifeDbContext contexto) =>
+        BibliotecaService.CriarConsultaPlana(contexto);
 
     [HttpPost]
-    public async Task<ActionResult<ItemBibliotecaResponse>> CriarItem(
-        [FromBody] CriarItemBibliotecaRequest request,
+    public async Task<ActionResult<JogoBibliotecaResponse>> Salvar(
+        [FromBody] SalvarJogoBibliotecaRequest request,
         CancellationToken cancellationToken)
     {
-        var titulo = request.Titulo.Trim();
-        var plataforma = request.Plataforma.Trim();
-
-        var tituloNormalizado = titulo.ToLower();
-        var jogo = await _contexto.Jogos
-            .FirstOrDefaultAsync(item => item.Titulo.Trim().ToLower() == tituloNormalizado, cancellationToken)
-            ?? new Jogo { Titulo = titulo };
-        var plataformaNormalizada = plataforma.ToLower();
-        var canal = await _contexto.Canais
-            .FirstOrDefaultAsync(item => item.Nome.Trim().ToLower() == plataformaNormalizada, cancellationToken);
-
-        canal ??= new Canal
+        try
         {
-            Nome = plataforma,
-            PermitePosse = true,
-            PermitePreco = false
-        };
-        canal.PermitePosse = true;
-
-        var posse = new PosseJogo
+            var result = await _service.SalvarAsync(request, cancellationToken);
+            if (result.Criado)
+                return Created($"/biblioteca/{result.Jogo.JogoId}", result.Jogo);
+            return Ok(result.Jogo);
+        }
+        catch (BibliotecaValidationException exception)
         {
-            Jogo = jogo,
-            Canal = canal,
-            MidiaFisica = request.MidiaFisica,
-            AdquiridoEm = DateTime.UtcNow
-        };
-
-        _contexto.PossesJogos.Add(posse);
-        await _contexto.SaveChangesAsync(cancellationToken);
-
-        var response = new ItemBibliotecaResponse(posse.Id, jogo.Id, jogo.Titulo, canal.Nome, posse.MidiaFisica);
-        return Created($"/biblioteca/{posse.Id}", response);
+            return BadRequest(new ProblemDetails { Detail = exception.Message });
+        }
     }
 }
-
-public sealed record CriarItemBibliotecaRequest(
-    [Required, MaxLength(200)] string Titulo,
-    [Required, MaxLength(100)] string Plataforma,
-    bool MidiaFisica);
-
-public sealed record ItemBibliotecaResponse(int Id, int JogoId, string Titulo, string Plataforma, bool MidiaFisica);
