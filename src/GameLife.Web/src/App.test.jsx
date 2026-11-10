@@ -12,15 +12,14 @@ test('carrega o início e permite abrir a biblioteca', async () => {
   render(<App />);
   expect(screen.getByRole('heading', { name: 'Início' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
-  expect(screen.getByRole('heading', { name: 'Biblioteca' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Minha Biblioteca de Jogos' })).toBeInTheDocument();
   expect(screen.getByLabelText('Nome do jogo')).toBeInTheDocument();
-  expect(screen.getByText('Mídia física')).toBeInTheDocument();
-  expect(screen.getByRole('option', { name: 'PlayStation 2' })).toBeInTheDocument();
-  expect(screen.getByRole('option', { name: 'PlayStation 3' })).toBeInTheDocument();
-  expect(screen.getByRole('option', { name: 'STEAM' })).toBeInTheDocument();
-  expect(screen.getByRole('option', { name: 'EPIC' })).toBeInTheDocument();
-  expect(screen.getByRole('option', { name: 'Amazon Luna' })).toBeInTheDocument();
-  expect(screen.getByRole('option', { name: 'GOG' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Selecionar PlayStation 2')).toBeInTheDocument();
+  expect(screen.getByLabelText('Selecionar PlayStation 3')).toBeInTheDocument();
+  expect(screen.getByLabelText('Selecionar STEAM')).toBeInTheDocument();
+  expect(screen.getByLabelText('Selecionar EPIC')).toBeInTheDocument();
+  expect(screen.getByLabelText('Selecionar Amazon Luna')).toBeInTheDocument();
+  expect(screen.getByLabelText('Selecionar GOG')).toBeInTheDocument();
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/biblioteca'));
 });
 
@@ -50,23 +49,44 @@ test('abre a Lista de Desejos pelo menu lateral', async () => {
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/lista-desejos'));
 });
 
+test('usa ícones SVG consistentes em todas as abas do menu', () => {
+  render(<App />);
+  const navigation = screen.getByRole('navigation', { name: 'Menu principal' });
+  const buttons = Array.from(navigation.querySelectorAll('button'));
+
+  expect(buttons).toHaveLength(7);
+  buttons.forEach((button) => expect(button.querySelector('svg')).not.toBeNull());
+  expect(navigation.textContent).not.toMatch(/[⌂♡✓🎧▦⚙]/u);
+});
+
 test('adiciona um jogo pela API', async () => {
   fetch
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 }) })
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ id: '1', titulo: 'Hades', plataforma: 'PC' }) });
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        jogoId: 1,
+        titulo: 'Hades',
+        anoLancamento: null,
+        plataformas: [{ posseId: 1, canalId: 1, nome: 'PC', midiaFisica: true, acompanhamento: null }]
+      })
+    });
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
   fireEvent.change(screen.getByLabelText('Nome do jogo'), { target: { value: 'Hades' } });
-  fireEvent.change(screen.getByLabelText('Plataforma'), { target: { value: 'PC' } });
-  fireEvent.click(screen.getByLabelText('Mídia física'));
+  fireEvent.click(screen.getByLabelText('Selecionar PC'));
+  fireEvent.click(screen.getByLabelText('Mídia física em PC'));
   fireEvent.click(screen.getByRole('button', { name: /adicionar à biblioteca/i }));
 
   await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/biblioteca', expect.objectContaining({
     method: 'POST',
-    body: JSON.stringify({ titulo: 'Hades', plataforma: 'PC', midiaFisica: true })
+    body: JSON.stringify({
+      titulo: 'Hades',
+      plataformas: [{ plataforma: 'PC', midiaFisica: true }]
+    })
   })));
   expect(await screen.findByText('Hades')).toBeInTheDocument();
 });
