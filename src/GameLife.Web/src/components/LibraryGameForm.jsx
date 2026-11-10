@@ -14,9 +14,22 @@ const numeroOpcional = (valor) => valor === '' ? undefined : Number(valor);
 
 const valorCampo = (valor) => valor == null ? '' : String(valor);
 
-const criarEstadoInicial = (jogo) => Object.fromEntries((jogo?.plataformas ?? []).map((plataforma) => {
+const chavePlataforma = (valor) => valor.trim().normalize('NFKC').toLocaleUpperCase('pt-BR');
+
+const criarOpcoesPlataforma = (platforms, jogo) => {
+  const opcoes = [...platforms];
+  for (const plataforma of jogo?.plataformas ?? []) {
+    if (!opcoes.some((opcao) => chavePlataforma(opcao) === chavePlataforma(plataforma.nome))) {
+      opcoes.push(plataforma.nome);
+    }
+  }
+  return opcoes;
+};
+
+const criarEstadoInicial = (jogo, opcoes) => Object.fromEntries((jogo?.plataformas ?? []).map((plataforma) => {
   const acompanhamento = plataforma.acompanhamento;
-  return [plataforma.nome, {
+  const nomeOpcao = opcoes.find((opcao) => chavePlataforma(opcao) === chavePlataforma(plataforma.nome)) ?? plataforma.nome;
+  return [nomeOpcao, {
     midiaFisica: plataforma.midiaFisica,
     acompanhar: Boolean(acompanhamento),
     status: acompanhamento?.status ?? '',
@@ -28,12 +41,13 @@ const criarEstadoInicial = (jogo) => Object.fromEntries((jogo?.plataformas ?? []
 }));
 
 function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCancel }) {
+  const opcoesPlataforma = criarOpcoesPlataforma(platforms, initialGame);
   const [titulo, setTitulo] = useState(() => initialGame?.titulo ?? '');
   const [anoLancamento, setAnoLancamento] = useState(() => valorCampo(initialGame?.anoLancamento));
-  const [selecionadas, setSelecionadas] = useState(() => criarEstadoInicial(initialGame));
+  const [selecionadas, setSelecionadas] = useState(() => criarEstadoInicial(initialGame, opcoesPlataforma));
   const [erro, setErro] = useState('');
   const editando = Boolean(initialGame);
-  const plataformasOriginais = new Set((initialGame?.plataformas ?? []).map((plataforma) => plataforma.nome));
+  const plataformasOriginais = new Set((initialGame?.plataformas ?? []).map((plataforma) => chavePlataforma(plataforma.nome)));
 
   const alternarPlataforma = (plataforma, marcada) => {
     setSelecionadas((atuais) => {
@@ -94,7 +108,7 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
     const payload = {
       titulo: titulo.trim(),
       ...(anoLancamento === '' ? {} : { anoLancamento: Number(anoLancamento) }),
-      plataformas: platforms
+      plataformas: opcoesPlataforma
         .filter((plataforma) => selecionadas[plataforma])
         .map((plataforma) => {
           const dados = selecionadas[plataforma];
@@ -151,14 +165,14 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
           ? 'As plataformas já cadastradas estão preservadas. Marque também os outros lugares onde você possui o jogo.'
           : 'Selecione todos os lugares onde você possui o jogo.'}</p>
         <div className="platform-options">
-          {platforms.map((plataforma) => (
+          {opcoesPlataforma.map((plataforma) => (
             <label key={plataforma} className={selecionadas[plataforma] ? 'selected' : ''}>
               <input
                 type="checkbox"
                 aria-label={`Selecionar ${plataforma}`}
                 checked={Boolean(selecionadas[plataforma])}
                 onChange={(evento) => alternarPlataforma(plataforma, evento.target.checked)}
-                disabled={saving || plataformasOriginais.has(plataforma)}
+                disabled={saving || plataformasOriginais.has(chavePlataforma(plataforma))}
               />
               <span>{plataforma}</span>
             </label>
@@ -167,7 +181,7 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
       </fieldset>
 
       <div className="selected-platforms">
-        {platforms.filter((plataforma) => selecionadas[plataforma]).map((plataforma) => {
+        {opcoesPlataforma.filter((plataforma) => selecionadas[plataforma]).map((plataforma) => {
           const dados = selecionadas[plataforma];
           return (
             <fieldset className="platform-details" key={plataforma}>

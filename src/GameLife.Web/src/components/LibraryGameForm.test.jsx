@@ -125,7 +125,7 @@ test('preenche uma ficha existente e permite marcar outra plataforma', async () 
         { posseId: 1, nome: 'PC', midiaFisica: true, acompanhamento: null },
         {
           posseId: 2,
-          nome: 'STEAM',
+          nome: 'Steam',
           midiaFisica: false,
           acompanhamento: {
             status: 'NaoTerminado',
