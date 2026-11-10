@@ -13,41 +13,37 @@ function normalize(value) {
     .toLocaleLowerCase('pt-BR');
 }
 
-function cardHue(platform) {
-  return [...platform].reduce((total, character) => total + character.codePointAt(0), 0) % 360;
+function cardHue(value) {
+  return [...value].reduce((total, character) => total + character.codePointAt(0), 0) % 360;
 }
 
 function formatHours(value) {
   return value == null ? 'Não informado' : `${Number(value).toLocaleString('pt-BR')} h`;
 }
 
-function formatAchievements(item) {
-  if (item.conquistasPossiveis == null || item.conquistasObtidas == null) return 'Não informado';
-  return `${item.conquistasObtidas} / ${item.conquistasPossiveis}`;
+function formatAchievements(tracking) {
+  if (tracking?.conquistasPossiveis == null || tracking?.conquistasObtidas == null) return 'Não informado';
+  return `${tracking.conquistasObtidas} / ${tracking.conquistasPossiveis}`;
 }
 
 export default function LibraryScreen({ items = [], loading = false }) {
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState('Todas');
   const [physicalOnly, setPhysicalOnly] = useState(false);
-  const flatItems = useMemo(() => items.flatMap((item) => item.plataformas?.map((plataforma) => ({
-    id: plataforma.posseId,
-    jogoId: item.jogoId,
-    titulo: item.titulo,
-    anoLancamento: item.anoLancamento,
-    plataforma: plataforma.nome,
-    midiaFisica: plataforma.midiaFisica,
-    status: plataforma.acompanhamento?.status,
-    tempoEmHoras: plataforma.acompanhamento?.tempoEmHoras,
-    conquistasPossiveis: plataforma.acompanhamento?.conquistasPossiveis,
-    conquistasObtidas: plataforma.acompanhamento?.conquistasObtidas
-  })) ?? [item]), [items]);
-  const platforms = useMemo(() => [...new Set(flatItems.map((item) => item.plataforma))]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR')), [flatItems]);
-  const filteredItems = useMemo(() => flatItems.filter((item) =>
-    normalize(item.titulo).includes(normalize(search)) &&
-    (platform === 'Todas' || item.plataforma === platform) &&
-    (!physicalOnly || item.midiaFisica)), [flatItems, search, platform, physicalOnly]);
+
+  const platforms = useMemo(() => [...new Set(items.flatMap((item) =>
+    (item.plataformas ?? []).map((entry) => entry.nome)))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR')), [items]);
+
+  const filteredGames = useMemo(() => items
+    .filter((item) => normalize(item.titulo).includes(normalize(search)))
+    .map((item) => ({
+      ...item,
+      visiblePlatforms: (item.plataformas ?? []).filter((entry) =>
+        (platform === 'Todas' || entry.nome === platform) &&
+        (!physicalOnly || entry.midiaFisica))
+    }))
+    .filter((item) => item.visiblePlatforms.length > 0), [items, search, platform, physicalOnly]);
 
   return <section className="library-showcase" aria-label="Biblioteca de jogos">
     <div className="library-toolbar">
@@ -74,21 +70,42 @@ export default function LibraryScreen({ items = [], loading = false }) {
     </div>
 
     {loading ? <div className="library-card-empty">Carregando biblioteca...</div> :
-      filteredItems.length === 0 ? <div className="library-card-empty">Nenhum jogo encontrado com esses filtros.</div> :
+      filteredGames.length === 0 ? <div className="library-card-empty">Nenhum jogo encontrado com esses filtros.</div> :
         <div className="library-card-grid">
-          {filteredItems.map((item) => <article className="library-game-card" key={item.id} style={{ '--card-hue': cardHue(item.plataforma) }}>
+          {filteredGames.map((game) => <article
+            className="library-game-card library-game-record"
+            key={game.jogoId}
+            style={{ '--card-hue': cardHue(game.titulo) }}
+          >
             <div className="library-card-cover">
-              <div className="library-card-tags"><span>{item.plataforma}</span><span>{item.midiaFisica ? 'Mídia física' : 'Digital'}</span></div>
-              <div><small>{item.anoLancamento ?? 'Não informado'}</small><h2>{item.titulo}</h2></div>
+              <div className="library-card-tags">
+                <span>{game.anoLancamento ?? 'Ano não informado'}</span>
+                <span>{game.visiblePlatforms.length} {game.visiblePlatforms.length === 1 ? 'plataforma' : 'plataformas'}</span>
+              </div>
+              <h2>{game.titulo}</h2>
             </div>
-            <div className="library-card-metrics">
-              <div><span>Horas</span><strong>{formatHours(item.tempoEmHoras)}</strong></div>
-              <div><span>Conquistas</span><strong>{formatAchievements(item)}</strong></div>
-            </div>
-            <div className="library-card-footer">
-              <span className={`library-status status-${item.status ?? 'SemAcompanhamento'}`}>
-                {statusLabels[item.status] ?? 'Sem acompanhamento'}
-              </span>
+
+            <div className="library-platform-list">
+              {game.visiblePlatforms.map((entry) => <section
+                className="library-platform-entry"
+                role="group"
+                aria-label={entry.nome}
+                key={entry.posseId}
+              >
+                <div className="library-platform-head">
+                  <strong>{entry.nome}</strong>
+                  <span className="library-platform-media">{entry.midiaFisica ? 'Mídia física' : 'Digital'}</span>
+                </div>
+                <div className="library-card-metrics">
+                  <div><span>Horas</span><strong>{formatHours(entry.acompanhamento?.tempoEmHoras)}</strong></div>
+                  <div><span>Conquistas</span><strong>{formatAchievements(entry.acompanhamento)}</strong></div>
+                </div>
+                <div className="library-card-footer">
+                  <span className={`library-status status-${entry.acompanhamento?.status ?? 'SemAcompanhamento'}`}>
+                    {statusLabels[entry.acompanhamento?.status] ?? 'Sem acompanhamento'}
+                  </span>
+                </div>
+              </section>)}
             </div>
           </article>)}
         </div>}

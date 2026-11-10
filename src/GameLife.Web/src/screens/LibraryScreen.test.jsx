@@ -1,52 +1,99 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import LibraryScreen from './LibraryScreen.jsx';
 
 const items = [
-  { id: 1, titulo: 'Éclipse', plataforma: 'PC', midiaFisica: false, anoLancamento: null, status: null, tempoEmHoras: null, conquistasPossiveis: null, conquistasObtidas: null },
-  { id: 2, titulo: 'Celeste', plataforma: 'STEAM', midiaFisica: true, anoLancamento: 2018, status: 'Zerado', tempoEmHoras: 12.5, conquistasPossiveis: 30, conquistasObtidas: 24 },
-  { id: 3, titulo: 'Cocoon', plataforma: 'PC', midiaFisica: true, anoLancamento: 2023, status: 'NaoTerminado', tempoEmHoras: 4, conquistasPossiveis: 10, conquistasObtidas: 3 }
+  {
+    jogoId: 1,
+    titulo: 'Graveyard Keeper',
+    anoLancamento: 2018,
+    plataformas: [
+      { posseId: 11, nome: 'STEAM', midiaFisica: false, acompanhamento: null },
+      {
+        posseId: 12,
+        nome: 'XBOX',
+        midiaFisica: true,
+        acompanhamento: {
+          status: 'Zerado',
+          tempoEmHoras: 22,
+          conquistasPossiveis: 12,
+          conquistasObtidas: 10
+        }
+      }
+    ]
+  },
+  {
+    jogoId: 2,
+    titulo: 'Éclipse',
+    anoLancamento: null,
+    plataformas: [
+      {
+        posseId: 21,
+        nome: 'PC',
+        midiaFisica: false,
+        acompanhamento: {
+          status: 'NaoTerminado',
+          tempoEmHoras: 4,
+          conquistasPossiveis: 10,
+          conquistasObtidas: 3
+        }
+      }
+    ]
+  }
 ];
 
-test('exibe todos os jogos reais em cards sem filtro', () => {
+test('exibe uma ficha para jogo com duas plataformas', () => {
   render(<LibraryScreen items={items} loading={false} />);
 
-  expect(screen.getByText('Éclipse')).toBeInTheDocument();
-  expect(screen.getByText('Celeste')).toBeInTheDocument();
-  expect(screen.getByText('Cocoon')).toBeInTheDocument();
-  expect(screen.getAllByRole('article')).toHaveLength(3);
+  const cards = screen.getAllByRole('article');
+  expect(cards).toHaveLength(2);
+  const graveyard = cards.find((card) => within(card).queryByText('Graveyard Keeper'));
+  expect(graveyard).toBeDefined();
+  expect(within(graveyard).getByText('STEAM')).toBeInTheDocument();
+  expect(within(graveyard).getByText('XBOX')).toBeInTheDocument();
+  expect(within(graveyard).getAllByRole('heading', { name: 'Graveyard Keeper' })).toHaveLength(1);
 });
 
-test('combina busca, plataforma e mídia física', () => {
-  render(<LibraryScreen items={items} loading={false} />);
-
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar jogos' }), { target: { value: 'CO' } });
-  fireEvent.click(screen.getByRole('button', { name: 'PC' }));
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Apenas mídia física' }));
-
-  expect(screen.getByText('Cocoon')).toBeInTheDocument();
-  expect(screen.queryByText('Éclipse')).not.toBeInTheDocument();
-  expect(screen.queryByText('Celeste')).not.toBeInTheDocument();
-});
-
-test('busca ignora acentos e diferenças de caixa', () => {
-  render(<LibraryScreen items={items} loading={false} />);
-
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar jogos' }), { target: { value: 'eclipse' } });
-
-  expect(screen.getByText('Éclipse')).toBeInTheDocument();
-});
-
-test('não inventa métricas ausentes', () => {
+test('mostra mídia e progresso independentes por plataforma', () => {
   render(<LibraryScreen items={[items[0]]} loading={false} />);
 
-  expect(screen.getAllByText('Não informado')).toHaveLength(3);
-  expect(screen.getByText('Sem acompanhamento')).toBeInTheDocument();
+  const steam = screen.getByRole('group', { name: 'STEAM' });
+  expect(within(steam).getByText('Digital')).toBeInTheDocument();
+  expect(within(steam).getByText('Sem acompanhamento')).toBeInTheDocument();
+
+  const xbox = screen.getByRole('group', { name: 'XBOX' });
+  expect(within(xbox).getByText('Mídia física')).toBeInTheDocument();
+  expect(within(xbox).getByText('22 h')).toBeInTheDocument();
+  expect(within(xbox).getByText('10 / 12')).toBeInTheDocument();
+  expect(within(xbox).getByText('Zerado')).toBeInTheDocument();
 });
 
-test('informa quando os filtros não encontram jogos', () => {
+test('filtra a ficha quando qualquer plataforma corresponde', () => {
   render(<LibraryScreen items={items} loading={false} />);
 
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar jogos' }), { target: { value: 'inexistente' } });
+  fireEvent.click(screen.getByRole('button', { name: 'XBOX' }));
 
-  expect(screen.getByText('Nenhum jogo encontrado com esses filtros.')).toBeInTheDocument();
+  expect(screen.getByText('Graveyard Keeper')).toBeInTheDocument();
+  expect(screen.queryByText('Éclipse')).not.toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'XBOX' })).toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'STEAM' })).not.toBeInTheDocument();
+});
+
+test('filtro físico mantém somente plataformas físicas visíveis', () => {
+  render(<LibraryScreen items={items} loading={false} />);
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Apenas mídia física' }));
+
+  expect(screen.getByText('Graveyard Keeper')).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'XBOX' })).toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'STEAM' })).not.toBeInTheDocument();
+  expect(screen.queryByText('Éclipse')).not.toBeInTheDocument();
+});
+
+test('busca continua ignorando caixa e acentos', () => {
+  render(<LibraryScreen items={items} loading={false} />);
+
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar jogos' }), { target: { value: 'ECLIPSE' } });
+
+  expect(screen.getByText('Éclipse')).toBeInTheDocument();
+  expect(screen.queryByText('Graveyard Keeper')).not.toBeInTheDocument();
 });

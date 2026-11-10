@@ -1906,14 +1906,29 @@ button:disabled {
   border-radius: 8px; background: rgba(7, 9, 18, .58); color: white; font-size: .68rem;
   font-weight: 800; text-overflow: ellipsis; white-space: nowrap;
 }
+.library-game-record .library-card-cover { min-height: 142px; }
+.library-game-record .library-card-cover h2 { margin: auto 0 0; }
+.library-platform-list { display: grid; }
+.library-platform-entry { min-width: 0; padding: 14px 16px 16px; border-top: 1px solid var(--line); }
+.library-platform-entry:first-child { border-top: 0; }
+.library-platform-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.library-platform-head > strong { color: var(--ink); font-size: .8rem; }
+.library-platform-media {
+  padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px;
+  color: var(--muted); font-size: .68rem; font-weight: 750;
+}
 .library-card-metrics { display: grid; padding: 4px 16px; }
+.library-platform-entry .library-card-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 10px 0 0; }
 .library-card-metrics div {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   min-height: 42px; border-bottom: 1px solid var(--line);
 }
+.library-platform-entry .library-card-metrics div { display: grid; gap: 3px; min-height: 0; padding: 9px 0; }
 .library-card-metrics span { color: var(--muted); font-size: .78rem; }
 .library-card-metrics strong { color: var(--ink); font-size: .8rem; text-align: right; }
+.library-platform-entry .library-card-metrics strong { text-align: left; }
 .library-card-footer { padding: 12px 16px 16px; }
+.library-platform-entry .library-card-footer { padding: 12px 0 0; }
 .library-status {
   display: inline-flex; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px;
   color: var(--muted); font-size: .7rem; font-weight: 800;
