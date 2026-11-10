@@ -1175,6 +1175,11 @@ button:disabled {
   gap: 10px;
 }
 
+.tracking-list {
+  display: grid;
+  gap: 18px;
+}
+
 .tracking-card {
   background: var(--bg-card);
   border: 1px solid var(--line-strong);
@@ -1183,10 +1188,56 @@ button:disabled {
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
 }
 
-.tracking-card-head h2 {
+.tracking-game-head {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.tracking-game-head h2 {
   font: 700 22px 'Manrope', sans-serif;
   color: #fff;
-  margin: 8px 0 4px;
+  margin: 0 0 4px;
+}
+
+.tracking-game-head p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tracking-platform-list {
+  display: grid;
+}
+
+.tracking-platform-entry {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tracking-platform-entry:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.tracking-card-head,
+.tracking-card-head > div:first-child,
+.tracking-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tracking-card-head {
+  justify-content: space-between;
+}
+
+.tracking-platform-name {
+  color: #fff;
+  font-size: 14px;
+}
+
+.tracking-card-head small {
+  color: #6ee7b7;
+  font-size: 11px;
 }
 
 .status-badge {
@@ -1372,6 +1423,16 @@ button:disabled {
     padding: 24px 16px;
   }
   .dashboard-metrics {
+    grid-template-columns: 1fr;
+  }
+  .tracking-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .tracking-entry-actions {
+    width: 100%;
+  }
+  .tracking-details {
     grid-template-columns: 1fr;
   }
 }
