@@ -26,7 +26,7 @@ function formatAchievements(tracking) {
   return `${tracking.conquistasObtidas} / ${tracking.conquistasPossiveis}`;
 }
 
-export default function LibraryScreen({ items = [], loading = false }) {
+export default function LibraryScreen({ items = [], loading = false, onEdit }) {
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState('Todas');
   const [physicalOnly, setPhysicalOnly] = useState(false);
@@ -107,6 +107,13 @@ export default function LibraryScreen({ items = [], loading = false }) {
                 </div>
               </section>)}
             </div>
+            {onEdit && <div className="library-game-actions">
+              <button
+                type="button"
+                aria-label={`Editar ${game.titulo}`}
+                onClick={() => onEdit(items.find((item) => item.jogoId === game.jogoId) ?? game)}
+              >Editar ficha</button>
+            </div>}
           </article>)}
         </div>}
   </section>;

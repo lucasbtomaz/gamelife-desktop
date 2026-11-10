@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { vi } from 'vitest';
 import LibraryScreen from './LibraryScreen.jsx';
 
 const items = [
@@ -96,4 +97,14 @@ test('busca continua ignorando caixa e acentos', () => {
 
   expect(screen.getByText('Éclipse')).toBeInTheDocument();
   expect(screen.queryByText('Graveyard Keeper')).not.toBeInTheDocument();
+});
+
+test('aciona a edição da ficha única selecionada', () => {
+  const onEdit = vi.fn();
+  render(<LibraryScreen items={items} loading={false} onEdit={onEdit} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Editar Graveyard Keeper' }));
+
+  expect(onEdit).toHaveBeenCalledTimes(1);
+  expect(onEdit).toHaveBeenCalledWith(items[0]);
 });

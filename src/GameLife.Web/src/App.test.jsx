@@ -103,3 +103,46 @@ test('informa quando a biblioteca não pode ser carregada', async () => {
     'Não foi possível carregar sua biblioteca. Verifique se a API está ligada.'
   );
 });
+
+test('edita uma ficha existente e adiciona outra plataforma sem duplicar o jogo', async () => {
+  const game = {
+    jogoId: 34,
+    titulo: 'Graveyard Keeper',
+    anoLancamento: 2018,
+    plataformas: [{ posseId: 1, canalId: 1, nome: 'STEAM', midiaFisica: false, acompanhamento: null }]
+  };
+  const updated = {
+    ...game,
+    plataformas: [...game.plataformas, { posseId: 2, canalId: 2, nome: 'XBOX', midiaFisica: true, acompanhamento: null }]
+  };
+  fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => [] })
+    .mockResolvedValueOnce({ ok: true, json: async () => [game] })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ total: 1, zerados: 0, dropados: 0, naoTerminados: 1 }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => updated });
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
+  expect(await screen.findByRole('heading', { name: 'Graveyard Keeper' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Editar Graveyard Keeper' }));
+
+  expect(screen.getByLabelText('Nome do jogo')).toHaveValue('Graveyard Keeper');
+  expect(screen.getByLabelText('Selecionar STEAM')).toBeChecked();
+  fireEvent.click(screen.getByLabelText('Selecionar XBOX'));
+  fireEvent.click(screen.getByLabelText('Mídia física em XBOX'));
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/biblioteca', expect.objectContaining({
+    method: 'POST',
+    body: JSON.stringify({
+      titulo: 'Graveyard Keeper',
+      anoLancamento: 2018,
+      plataformas: [
+        { plataforma: 'STEAM', midiaFisica: false },
+        { plataforma: 'XBOX', midiaFisica: true }
+      ]
+    })
+  })));
+  expect(screen.getAllByRole('heading', { name: 'Graveyard Keeper' })).toHaveLength(1);
+  expect(screen.getByRole('group', { name: 'XBOX' })).toBeInTheDocument();
+});

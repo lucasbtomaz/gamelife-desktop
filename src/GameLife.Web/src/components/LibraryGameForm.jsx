@@ -12,11 +12,28 @@ const estadoPlataforma = () => ({
 
 const numeroOpcional = (valor) => valor === '' ? undefined : Number(valor);
 
-function LibraryGameForm({ platforms, saving, onSubmit }) {
-  const [titulo, setTitulo] = useState('');
-  const [anoLancamento, setAnoLancamento] = useState('');
-  const [selecionadas, setSelecionadas] = useState({});
+const valorCampo = (valor) => valor == null ? '' : String(valor);
+
+const criarEstadoInicial = (jogo) => Object.fromEntries((jogo?.plataformas ?? []).map((plataforma) => {
+  const acompanhamento = plataforma.acompanhamento;
+  return [plataforma.nome, {
+    midiaFisica: plataforma.midiaFisica,
+    acompanhar: Boolean(acompanhamento),
+    status: acompanhamento?.status ?? '',
+    dataStatus: acompanhamento?.dataStatus?.slice(0, 10) ?? '',
+    tempoEmHoras: valorCampo(acompanhamento?.tempoEmHoras),
+    conquistasPossiveis: valorCampo(acompanhamento?.conquistasPossiveis),
+    conquistasObtidas: valorCampo(acompanhamento?.conquistasObtidas)
+  }];
+}));
+
+function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCancel }) {
+  const [titulo, setTitulo] = useState(() => initialGame?.titulo ?? '');
+  const [anoLancamento, setAnoLancamento] = useState(() => valorCampo(initialGame?.anoLancamento));
+  const [selecionadas, setSelecionadas] = useState(() => criarEstadoInicial(initialGame));
   const [erro, setErro] = useState('');
+  const editando = Boolean(initialGame);
+  const plataformasOriginais = new Set((initialGame?.plataformas ?? []).map((plataforma) => plataforma.nome));
 
   const alternarPlataforma = (plataforma, marcada) => {
     setSelecionadas((atuais) => {
@@ -94,9 +111,11 @@ function LibraryGameForm({ platforms, saving, onSubmit }) {
     } catch {
       return;
     }
-    setTitulo('');
-    setAnoLancamento('');
-    setSelecionadas({});
+    if (!editando) {
+      setTitulo('');
+      setAnoLancamento('');
+      setSelecionadas({});
+    }
     setErro('');
   };
 
@@ -111,7 +130,7 @@ function LibraryGameForm({ platforms, saving, onSubmit }) {
           maxLength="200"
           placeholder="Ex.: Graveyard Keeper"
           autoComplete="off"
-          disabled={saving}
+          disabled={saving || editando}
         />
 
         <label htmlFor="ano-lancamento">Ano de lançamento (opcional)</label>
@@ -128,7 +147,9 @@ function LibraryGameForm({ platforms, saving, onSubmit }) {
 
       <fieldset className="platform-selector">
         <legend>Plataformas</legend>
-        <p>Selecione todos os lugares onde você possui o jogo.</p>
+        <p>{editando
+          ? 'As plataformas já cadastradas estão preservadas. Marque também os outros lugares onde você possui o jogo.'
+          : 'Selecione todos os lugares onde você possui o jogo.'}</p>
         <div className="platform-options">
           {platforms.map((plataforma) => (
             <label key={plataforma} className={selecionadas[plataforma] ? 'selected' : ''}>
@@ -137,7 +158,7 @@ function LibraryGameForm({ platforms, saving, onSubmit }) {
                 aria-label={`Selecionar ${plataforma}`}
                 checked={Boolean(selecionadas[plataforma])}
                 onChange={(evento) => alternarPlataforma(plataforma, evento.target.checked)}
-                disabled={saving}
+                disabled={saving || plataformasOriginais.has(plataforma)}
               />
               <span>{plataforma}</span>
             </label>
@@ -242,7 +263,12 @@ function LibraryGameForm({ platforms, saving, onSubmit }) {
       </div>
 
       {erro && <div className="feedback erro" role="alert">{erro}</div>}
-      <button type="submit" disabled={saving}>{saving ? 'Adicionando...' : 'Adicionar à biblioteca'}</button>
+      <div className="library-form-actions">
+        {editando && <button type="button" className="secondary-button" onClick={onCancel} disabled={saving}>Cancelar</button>}
+        <button type="submit" disabled={saving}>
+          {saving ? (editando ? 'Salvando...' : 'Adicionando...') : (editando ? 'Salvar alterações' : 'Adicionar à biblioteca')}
+        </button>
+      </div>
     </form>
   );
 }

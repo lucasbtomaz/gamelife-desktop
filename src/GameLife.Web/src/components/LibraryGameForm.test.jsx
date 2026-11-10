@@ -110,3 +110,63 @@ test('bloqueia envio sem plataforma e conquistas inconsistentes', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Conquistas obtidas não podem superar as possíveis.');
   expect(onSubmit).not.toHaveBeenCalled();
 });
+
+test('preenche uma ficha existente e permite marcar outra plataforma', async () => {
+  const onSubmit = vi.fn().mockResolvedValue(undefined);
+  render(<LibraryGameForm
+    platforms={plataformas}
+    saving={false}
+    onSubmit={onSubmit}
+    initialGame={{
+      jogoId: 34,
+      titulo: 'Graveyard Keeper',
+      anoLancamento: 2018,
+      plataformas: [
+        { posseId: 1, nome: 'PC', midiaFisica: true, acompanhamento: null },
+        {
+          posseId: 2,
+          nome: 'STEAM',
+          midiaFisica: false,
+          acompanhamento: {
+            status: 'NaoTerminado',
+            dataStatus: '2026-11-10T00:00:00',
+            tempoEmHoras: 12,
+            conquistasPossiveis: 20,
+            conquistasObtidas: 5
+          }
+        }
+      ]
+    }}
+  />);
+
+  expect(screen.getByLabelText('Nome do jogo')).toHaveValue('Graveyard Keeper');
+  expect(screen.getByLabelText('Ano de lançamento (opcional)')).toHaveValue(2018);
+  expect(screen.getByLabelText('Selecionar PC')).toBeChecked();
+  expect(screen.getByLabelText('Mídia física em PC')).toBeChecked();
+  expect(screen.getByLabelText('Selecionar STEAM')).toBeChecked();
+  expect(screen.getByLabelText('Acompanhar progresso em STEAM')).toBeChecked();
+  expect(screen.getByLabelText('Horas jogadas em STEAM')).toHaveValue(12);
+
+  fireEvent.click(screen.getByLabelText('Selecionar Xbox Series X|S'));
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({
+    titulo: 'Graveyard Keeper',
+    anoLancamento: 2018,
+    plataformas: [
+      { plataforma: 'PC', midiaFisica: true },
+      {
+        plataforma: 'STEAM',
+        midiaFisica: false,
+        acompanhamento: {
+          status: 'NaoTerminado',
+          dataStatus: '2026-11-10',
+          tempoEmHoras: 12,
+          conquistasPossiveis: 20,
+          conquistasObtidas: 5
+        }
+      },
+      { plataforma: 'Xbox Series X|S', midiaFisica: false }
+    ]
+  }));
+});

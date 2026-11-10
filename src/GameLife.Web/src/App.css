@@ -1990,6 +1990,12 @@ button:disabled {
 .library-platform-entry .library-card-metrics strong { text-align: left; }
 .library-card-footer { padding: 12px 16px 16px; }
 .library-platform-entry .library-card-footer { padding: 12px 0 0; }
+.library-game-actions { padding: 0 16px 16px; }
+.library-game-actions button {
+  width: 100%; height: 38px; border: 1px solid var(--line-strong); box-shadow: none;
+  background: rgba(139, 92, 246, .1); color: var(--ink); font-size: .78rem;
+}
+.library-game-actions button:hover { border-color: var(--purple); background: rgba(139, 92, 246, .2); }
 .library-status {
   display: inline-flex; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px;
   color: var(--muted); font-size: .7rem; font-weight: 800;
@@ -2033,7 +2039,9 @@ button:disabled {
 .tracking-fields label { min-width: 0; }
 .tracking-fields input,
 .tracking-fields select { margin-top: 7px; padding-left: 14px; }
-.library-game-form > button { justify-self: end; width: min(100%, 280px); }
+.library-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.library-form-actions button { width: min(100%, 280px); }
+.library-form-actions .secondary-button { border: 1px solid var(--line-strong); background: transparent; color: var(--ink); box-shadow: none; }
 .library-add-panel > .feedback { margin-top: 16px; }
 
 @media (max-width: 1080px) {

@@ -29,6 +29,8 @@ function App() {
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
+  const [jogoEmEdicao, setJogoEmEdicao] = useState(null);
+  const [editorAberto, setEditorAberto] = useState(false);
   const [resumoProgresso, setResumoProgresso] = useState({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 });
   const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
 
@@ -76,7 +78,7 @@ function App() {
       .finally(() => setCarregandoPerfil(false));
   }, [tela]);
 
-  const adicionarJogo = async (payload) => {
+  const salvarJogo = async (payload, editando = false) => {
     setMensagem(null);
     setSalvando(true);
     try {
@@ -87,13 +89,18 @@ function App() {
       });
 
       const conteudo = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) throw new Error(conteudo.detail || 'Não foi possível adicionar o jogo.');
+      if (!resposta.ok) throw new Error(conteudo.detail || 'Não foi possível salvar o jogo.');
 
       setItens((atuais) => {
         const demais = atuais.filter((item) => item.jogoId !== conteudo.jogoId);
         return [...demais, conteudo].sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'));
       });
-      setMensagem({ tipo: 'sucesso', texto: `${conteudo.titulo} foi adicionado à sua biblioteca.` });
+      setMensagem({
+        tipo: 'sucesso',
+        texto: editando
+          ? `${conteudo.titulo} foi atualizado na sua biblioteca.`
+          : `${conteudo.titulo} foi adicionado à sua biblioteca.`
+      });
       return conteudo;
     } catch (erro) {
       setMensagem({ tipo: 'erro', texto: erro.message });
@@ -101,6 +108,28 @@ function App() {
     } finally {
       setSalvando(false);
     }
+  };
+
+  const abrirEdicao = (jogo) => {
+    setJogoEmEdicao(jogo);
+    setEditorAberto(true);
+    setMensagem(null);
+  };
+
+  const cancelarEdicao = () => {
+    setJogoEmEdicao(null);
+    setEditorAberto(false);
+    setMensagem(null);
+  };
+
+  const enviarJogo = async (payload) => {
+    const editando = Boolean(jogoEmEdicao);
+    const salvo = await salvarJogo(payload, editando);
+    if (editando) {
+      setJogoEmEdicao(null);
+      setEditorAberto(false);
+    }
+    return salvo;
   };
 
   const criarColecao = async (evento) => {
@@ -202,18 +231,32 @@ function App() {
           <div className="collection-count"><strong>{itens.length}</strong><span>{itens.length === 1 ? 'jogo na coleção' : 'jogos na coleção'}</span></div>
         </header>
 
-        <LibraryScreen items={itens} loading={carregando} />
+        <LibraryScreen items={itens} loading={carregando} onEdit={abrirEdicao} />
         <LibraryProgressSummary summary={resumoProgresso} />
 
-        <details className="library-add-panel form-card">
+        <details
+          className="library-add-panel form-card"
+          open={editorAberto}
+          onToggle={(evento) => setEditorAberto(evento.currentTarget.open)}
+        >
           <summary>
             <div className="card-heading">
               <span className="heading-icon"><Icon><path d="M12 5v14M5 12h14"/></Icon></span>
-              <div><h2>Adicionar novo jogo</h2><p>Cadastre um jogo na sua coleção.</p></div>
+              <div>
+                <h2>{jogoEmEdicao ? 'Editar jogo' : 'Adicionar novo jogo'}</h2>
+                <p>{jogoEmEdicao ? 'Marque todas as plataformas onde você possui este jogo.' : 'Cadastre um jogo na sua coleção.'}</p>
+              </div>
             </div>
           </summary>
 
-          <LibraryGameForm platforms={plataformas} saving={salvando} onSubmit={adicionarJogo} />
+          <LibraryGameForm
+            key={jogoEmEdicao?.jogoId ?? 'novo'}
+            platforms={plataformas}
+            saving={salvando}
+            onSubmit={enviarJogo}
+            initialGame={jogoEmEdicao}
+            onCancel={cancelarEdicao}
+          />
           {mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}
         </details>
       </main>}
