@@ -270,7 +270,8 @@ namespace gamelife_api.Migrations
 
                     b.HasIndex("CanalId");
 
-                    b.HasIndex("JogoId");
+                    b.HasIndex("JogoId", "CanalId")
+                        .IsUnique();
 
                     b.ToTable("PossesJogos");
                 });

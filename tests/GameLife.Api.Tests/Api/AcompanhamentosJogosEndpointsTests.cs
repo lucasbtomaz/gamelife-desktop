@@ -21,7 +21,7 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
         Assert.NotNull(criado);
         Assert.False(criado.EstaNaBiblioteca);
         Assert.Equal(50, criado.PercentualConquistas);
-        var biblioteca = await _client.GetFromJsonAsync<List<ItemBibliotecaResponse>>("/biblioteca");
+        var biblioteca = await _client.GetFromJsonAsync<List<JogoBibliotecaResponse>>("/biblioteca");
         Assert.DoesNotContain(biblioteca!, item => item.Titulo == titulo);
     }
 
@@ -29,15 +29,16 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
     public async Task IncluiNaBibliotecaEReutilizaPosseExistente()
     {
         var titulo = $"Biblioteca {Guid.NewGuid()}";
-        await _client.PostAsJsonAsync("/biblioteca", new { titulo, plataforma = "PC", midiaFisica = true });
+        await _client.PostAsJsonAsync("/biblioteca", NovoItemBiblioteca(titulo, "PC", true));
 
         var resposta = await _client.PostAsJsonAsync("/api/acompanhamentos-jogos", Novo(titulo, adicionarBiblioteca: true));
 
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
         var criado = await resposta.Content.ReadFromJsonAsync<AcompanhamentoResponse>();
         Assert.True(criado!.EstaNaBiblioteca);
-        var biblioteca = await _client.GetFromJsonAsync<List<ItemBibliotecaResponse>>("/biblioteca");
-        Assert.Single(biblioteca!, item => item.Titulo == titulo && item.Plataforma == "PC");
+        var biblioteca = await _client.GetFromJsonAsync<List<JogoBibliotecaResponse>>("/biblioteca");
+        var jogo = Assert.Single(biblioteca!, item => item.Titulo == titulo);
+        Assert.Single(jogo.Plataformas, plataforma => plataforma.Nome == "PC");
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
         Assert.True(resumo.Dropados >= 1);
 
         Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"/api/acompanhamentos-jogos/{criado.Id}")).StatusCode);
-        var biblioteca = await _client.GetFromJsonAsync<List<ItemBibliotecaResponse>>("/biblioteca");
+        var biblioteca = await _client.GetFromJsonAsync<List<JogoBibliotecaResponse>>("/biblioteca");
         Assert.Contains(biblioteca!, item => item.Titulo == titulo);
     }
 
@@ -131,14 +132,14 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
     {
         var titulo = $"Posse posterior {Guid.NewGuid()}";
         await _client.PostAsJsonAsync("/api/acompanhamentos-jogos", Novo(titulo));
-        await _client.PostAsJsonAsync("/biblioteca", new { titulo, plataforma = "PC", midiaFisica = false });
+        await _client.PostAsJsonAsync("/biblioteca", NovoItemBiblioteca(titulo));
 
         var acompanhamentos = await _client.GetFromJsonAsync<List<AcompanhamentoResponse>>("/api/acompanhamentos-jogos");
         Assert.True(acompanhamentos!.Single(item => item.Titulo == titulo).EstaNaBiblioteca);
-        var biblioteca = await _client.GetFromJsonAsync<List<ItemBibliotecaResponse>>("/biblioteca");
-        var posse = biblioteca!.Single(item => item.Titulo == titulo);
+        var biblioteca = await _client.GetFromJsonAsync<List<JogoBibliotecaResponse>>("/biblioteca");
+        var posse = biblioteca!.Single(item => item.Titulo == titulo).Plataformas.Single(item => item.Nome == "PC");
 
-        Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"/api/posses/{posse.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"/api/posses/{posse.PosseId}")).StatusCode);
         acompanhamentos = await _client.GetFromJsonAsync<List<AcompanhamentoResponse>>("/api/acompanhamentos-jogos");
         Assert.False(acompanhamentos!.Single(item => item.Titulo == titulo).EstaNaBiblioteca);
     }
@@ -160,8 +161,15 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
         tempoEmHoras = 10.5m, conquistasPossiveis = 20, conquistasObtidas = 10, adicionarBiblioteca
     };
 
+    private static object NovoItemBiblioteca(string titulo, string plataforma = "PC", bool midiaFisica = false) => new
+    {
+        titulo,
+        plataformas = new[] { new { plataforma, midiaFisica } }
+    };
+
     private sealed record AcompanhamentoResponse(int Id, int JogoId, string Titulo, int CanalId, string Plataforma, string Status, decimal PercentualConquistas, bool EstaNaBiblioteca);
     private sealed record ResumoResponse(int Total, int Zerados, int Dropados, int NaoTerminados);
-    private sealed record ItemBibliotecaResponse(int Id, string Titulo, string Plataforma, bool MidiaFisica);
+    private sealed record JogoBibliotecaResponse(int JogoId, string Titulo, PlataformaBibliotecaResponse[] Plataformas);
+    private sealed record PlataformaBibliotecaResponse(int PosseId, string Nome, bool MidiaFisica);
     private sealed record CanalResponse(int Id, string Nome, bool PermitePosse);
 }

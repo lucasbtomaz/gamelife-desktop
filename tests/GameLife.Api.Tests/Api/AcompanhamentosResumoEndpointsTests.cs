@@ -26,9 +26,40 @@ public sealed class AcompanhamentosResumoEndpointsTests : IClassFixture<GameLife
         Assert.Equal(2, resumo.NaoTerminados);
     }
 
+    [Fact]
+    public async Task ContaFichaMultiplataformaComoUmUnicoJogo()
+    {
+        var anterior = await _client.GetFromJsonAsync<ResumoResponse>("/api/acompanhamentos-jogos/resumo");
+        Assert.NotNull(anterior);
+        var titulo = $"Multiplataforma {Guid.NewGuid()}";
+        var resposta = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[]
+            {
+                new { plataforma = "STEAM", midiaFisica = false },
+                new { plataforma = "XBOX", midiaFisica = false },
+                new { plataforma = "PlayStation 5", midiaFisica = false }
+            }
+        });
+        resposta.EnsureSuccessStatusCode();
+
+        var resumo = await _client.GetFromJsonAsync<ResumoResponse>("/api/acompanhamentos-jogos/resumo");
+
+        Assert.NotNull(resumo);
+        Assert.Equal(anterior.Total + 1, resumo.Total);
+        Assert.Equal(anterior.Zerados, resumo.Zerados);
+        Assert.Equal(anterior.Dropados, resumo.Dropados);
+        Assert.Equal(anterior.NaoTerminados + 1, resumo.NaoTerminados);
+    }
+
     private async Task AdicionarBiblioteca(string titulo, string plataforma)
     {
-        var resposta = await _client.PostAsJsonAsync("/biblioteca", new { titulo, plataforma, midiaFisica = false });
+        var resposta = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[] { new { plataforma, midiaFisica = false } }
+        });
         resposta.EnsureSuccessStatusCode();
     }
 
