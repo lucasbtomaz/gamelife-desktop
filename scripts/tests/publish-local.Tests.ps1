@@ -1,8 +1,7 @@
-$scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'publish-local.ps1'
-
 Describe 'Publicação local do monorepositório' {
     BeforeAll {
-        . $scriptPath -LibraryOnly
+        $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'publish-local.ps1'
+        . $script:scriptPath -LibraryOnly
     }
 
     It 'resolve todos os caminhos dentro da raiz informada' {
