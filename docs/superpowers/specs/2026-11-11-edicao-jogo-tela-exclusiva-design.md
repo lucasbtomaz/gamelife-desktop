@@ -26,4 +26,3 @@ O salvamento deve acrescentar plataformas à mesma ficha e retornar sucesso. O S
 ## Correção do salvamento
 
 A resposta do jogo será consultada ainda dentro da transação SQLite ativa. Somente depois a transação será confirmada. Um teste com SQLite real impedirá a regressão que os testes em memória não detectaram.
-

@@ -391,4 +391,3 @@ Abrir `artifacts/GameLife/GameLife.exe`, conferir uma única ficha de `Graveyard
 - [ ] **Step 6: Comparar banco e encerrar**
 
 Repetir integridade e contagens. Nenhuma tabela pode perder registros; a única alteração esperada no primeiro início é o índice único. Não criar dados pessoais de teste no banco real.
-

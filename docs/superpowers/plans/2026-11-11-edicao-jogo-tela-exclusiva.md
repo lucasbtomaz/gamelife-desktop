@@ -79,4 +79,3 @@
 - [ ] **Step 3: Publicar com `scripts/publish-local.ps1`.**
 - [ ] **Step 4: Abrir o executável e validar a edição em tela exclusiva sem salvar dados de teste.**
 - [ ] **Step 5: Confirmar integridade, contagens e destino do atalho.**
-
