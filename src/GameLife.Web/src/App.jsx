@@ -34,12 +34,27 @@ function App() {
   const [resumoProgresso, setResumoProgresso] = useState({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 });
   const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
 
+  const carregarDashboard = async () => {
+    const resposta = await fetch('/api/dashboard/inicio');
+    if (!resposta.ok) throw new Error();
+    const dados = await resposta.json();
+    setDashboard(dados);
+    if (dados.perfil) setPerfil(dados.perfil);
+    return dados;
+  };
+
+  const carregarResumoProgresso = async () => {
+    const resposta = await fetch('/api/acompanhamentos-jogos/resumo');
+    if (!resposta.ok) throw new Error();
+    const resumo = await resposta.json();
+    setResumoProgresso(resumo);
+    return resumo;
+  };
+
   useEffect(() => {
     if (tela !== 'inicio') return;
     setErroDashboard(false);
-    fetch('/api/dashboard/inicio')
-      .then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
-      .then((dados) => { setDashboard(dados); if (dados.perfil) setPerfil(dados.perfil); })
+    carregarDashboard()
       .catch(() => { setDashboard(null); setErroDashboard(true); });
   }, [tela]);
 
@@ -58,9 +73,7 @@ function App() {
     };
 
     carregarBiblioteca();
-    fetch('/api/acompanhamentos-jogos/resumo')
-      .then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
-      .then(setResumoProgresso)
+    carregarResumoProgresso()
       .catch(() => setMensagem({ tipo: 'erro', texto: 'A Biblioteca foi carregada, mas o resumo de progresso não está disponível.' }));
   }, [tela]);
 
@@ -95,6 +108,10 @@ function App() {
         const demais = atuais.filter((item) => item.jogoId !== conteudo.jogoId);
         return [...demais, conteudo].sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'));
       });
+      await Promise.allSettled([
+        carregarResumoProgresso(),
+        carregarDashboard()
+      ]);
       setMensagem({
         tipo: 'sucesso',
         texto: editando

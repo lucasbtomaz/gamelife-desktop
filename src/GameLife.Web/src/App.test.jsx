@@ -92,6 +92,14 @@ test('adiciona um jogo pela tela exclusiva', async () => {
         anoLancamento: null,
         plataformas: [{ posseId: 1, canalId: 1, nome: 'PC', midiaFisica: true, acompanhamento: null }]
       })
+    })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ total: 1, zerados: 0, dropados: 0, naoTerminados: 1 }) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        perfil: { nome: 'Jogador', fotoDataUrl: null, exibirJogosRecentes: true },
+        resumo: { totalJogos: 1 }
+      })
     });
 
   render(<App />);
@@ -102,7 +110,7 @@ test('adiciona um jogo pela tela exclusiva', async () => {
   fireEvent.click(screen.getByLabelText('Mídia física em PC'));
   fireEvent.click(screen.getByRole('button', { name: /adicionar à biblioteca/i }));
 
-  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/biblioteca', expect.objectContaining({
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/biblioteca', expect.objectContaining({
     method: 'POST',
     body: JSON.stringify({
       titulo: 'Hades',
@@ -110,6 +118,12 @@ test('adiciona um jogo pela tela exclusiva', async () => {
     })
   })));
   expect(await screen.findByText('Hades')).toBeInTheDocument();
+  await waitFor(() => {
+    expect(fetch.mock.calls.filter(([url]) => url === '/api/acompanhamentos-jogos/resumo')).toHaveLength(2);
+    expect(fetch.mock.calls.filter(([url]) => url === '/api/dashboard/inicio')).toHaveLength(2);
+  });
+  expect(screen.getByRole('region', { name: 'Resumo do progresso dos jogos' }).querySelector('.summary-total strong')).toHaveTextContent('1');
+  expect(screen.getByText('1 jogo')).toBeInTheDocument();
 });
 
 test('informa quando a biblioteca não pode ser carregada', async () => {
@@ -156,7 +170,7 @@ test('edita uma ficha existente e adiciona outra plataforma sem duplicar o jogo'
   fireEvent.click(screen.getByLabelText('Mídia física em XBOX'));
   fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
 
-  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/biblioteca', expect.objectContaining({
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/biblioteca', expect.objectContaining({
     method: 'POST',
     body: JSON.stringify({
       titulo: 'Graveyard Keeper',
