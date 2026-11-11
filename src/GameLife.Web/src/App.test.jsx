@@ -13,14 +13,34 @@ test('carrega o início e permite abrir a biblioteca', async () => {
   expect(screen.getByRole('heading', { name: 'Início' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
   expect(screen.getByRole('heading', { name: 'Minha Biblioteca de Jogos' })).toBeInTheDocument();
-  expect(screen.getByLabelText('Nome do jogo')).toBeInTheDocument();
-  expect(screen.getByLabelText('Selecionar PlayStation 2')).toBeInTheDocument();
-  expect(screen.getByLabelText('Selecionar PlayStation 3')).toBeInTheDocument();
-  expect(screen.getByLabelText('Selecionar STEAM')).toBeInTheDocument();
-  expect(screen.getByLabelText('Selecionar EPIC')).toBeInTheDocument();
-  expect(screen.getByLabelText('Selecionar Amazon Luna')).toBeInTheDocument();
-  expect(screen.getByLabelText('Selecionar GOG')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Adicionar jogo' })).toBeInTheDocument();
+  expect(screen.queryByLabelText('Nome do jogo')).not.toBeInTheDocument();
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/biblioteca'));
+});
+
+test('mantém totais e adicionar acima da grade e abre cadastro em tela exclusiva', async () => {
+  fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => [] })
+    .mockResolvedValueOnce({ ok: true, json: async () => [] })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ total: 32, zerados: 2, dropados: 0, naoTerminados: 30 }) });
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
+
+  const summary = await screen.findByRole('region', { name: 'Resumo do progresso dos jogos' });
+  const library = screen.getByRole('region', { name: 'Biblioteca de jogos' });
+  const add = screen.getByRole('button', { name: 'Adicionar jogo' });
+  expect(summary.compareDocumentPosition(library) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(add.compareDocumentPosition(library) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  fireEvent.click(add);
+  expect(screen.getByRole('heading', { name: 'Adicionar jogo' })).toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Biblioteca de jogos' })).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Nome do jogo')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Voltar para a biblioteca' }));
+  expect(screen.getByRole('heading', { name: 'Minha Biblioteca de Jogos' })).toBeInTheDocument();
+  expect(screen.queryByLabelText('Nome do jogo')).not.toBeInTheDocument();
 });
 
 test('mostra no perfil lateral o total persistido do dashboard', async () => {
@@ -59,7 +79,7 @@ test('usa ícones SVG consistentes em todas as abas do menu', () => {
   expect(navigation.textContent).not.toMatch(/[⌂♡✓🎧▦⚙]/u);
 });
 
-test('adiciona um jogo pela API', async () => {
+test('adiciona um jogo pela tela exclusiva', async () => {
   fetch
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
@@ -76,6 +96,7 @@ test('adiciona um jogo pela API', async () => {
 
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Adicionar jogo' }));
   fireEvent.change(screen.getByLabelText('Nome do jogo'), { target: { value: 'Hades' } });
   fireEvent.click(screen.getByLabelText('Selecionar PC'));
   fireEvent.click(screen.getByLabelText('Mídia física em PC'));
@@ -126,6 +147,9 @@ test('edita uma ficha existente e adiciona outra plataforma sem duplicar o jogo'
   expect(await screen.findByRole('heading', { name: 'Graveyard Keeper' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Editar Graveyard Keeper' }));
 
+  expect(screen.getByRole('heading', { name: 'Editar Graveyard Keeper' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Minha Biblioteca de Jogos' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('searchbox', { name: 'Buscar jogos' })).not.toBeInTheDocument();
   expect(screen.getByLabelText('Nome do jogo')).toHaveValue('Graveyard Keeper');
   expect(screen.getByLabelText('Selecionar STEAM')).toBeChecked();
   fireEvent.click(screen.getByLabelText('Selecionar XBOX'));
@@ -143,6 +167,7 @@ test('edita uma ficha existente e adiciona outra plataforma sem duplicar o jogo'
       ]
     })
   })));
+  expect(screen.getByRole('heading', { name: 'Minha Biblioteca de Jogos' })).toBeInTheDocument();
   expect(screen.getAllByRole('heading', { name: 'Graveyard Keeper' })).toHaveLength(1);
   expect(screen.getByRole('group', { name: 'XBOX' })).toBeInTheDocument();
 });

@@ -6,7 +6,7 @@ import GameTrackingScreen from './screens/GameTrackingScreen.jsx';
 import LibraryScreen from './screens/LibraryScreen.jsx';
 import LibraryProgressSummary from './components/LibraryProgressSummary.jsx';
 import PainelRetrospectiva from './components/PainelRetrospectiva.jsx';
-import LibraryGameForm from './components/LibraryGameForm.jsx';
+import LibraryGameScreen from './screens/LibraryGameScreen.jsx';
 
 const plataformas = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'AMAZON PRIME', 'BLIZZARD', 'EA', 'NINTENDO', 'PSN', 'UBISOFT', 'XBOX', 'PLAY STORE', 'Outra'];
 
@@ -30,7 +30,7 @@ function App() {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
   const [jogoEmEdicao, setJogoEmEdicao] = useState(null);
-  const [editorAberto, setEditorAberto] = useState(false);
+  const [modoBiblioteca, setModoBiblioteca] = useState(null);
   const [resumoProgresso, setResumoProgresso] = useState({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 });
   const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
 
@@ -112,23 +112,27 @@ function App() {
 
   const abrirEdicao = (jogo) => {
     setJogoEmEdicao(jogo);
-    setEditorAberto(true);
+    setModoBiblioteca('editar');
     setMensagem(null);
   };
 
-  const cancelarEdicao = () => {
+  const abrirCadastro = () => {
     setJogoEmEdicao(null);
-    setEditorAberto(false);
+    setModoBiblioteca('adicionar');
+    setMensagem(null);
+  };
+
+  const voltarParaBiblioteca = () => {
+    setJogoEmEdicao(null);
+    setModoBiblioteca(null);
     setMensagem(null);
   };
 
   const enviarJogo = async (payload) => {
     const editando = Boolean(jogoEmEdicao);
     const salvo = await salvarJogo(payload, editando);
-    if (editando) {
-      setJogoEmEdicao(null);
-      setEditorAberto(false);
-    }
+    setJogoEmEdicao(null);
+    setModoBiblioteca(null);
     return salvo;
   };
 
@@ -183,7 +187,7 @@ function App() {
             <Icon><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></Icon>
             Início
           </button>
-          <button className={`nav-item ${tela === 'biblioteca' ? 'active' : ''}`} onClick={() => setTela('biblioteca')}>
+          <button className={`nav-item ${tela === 'biblioteca' ? 'active' : ''}`} onClick={() => { setTela('biblioteca'); setModoBiblioteca(null); setJogoEmEdicao(null); }}>
             <Icon><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></Icon>
             Biblioteca
           </button>
@@ -221,7 +225,16 @@ function App() {
         <HomeDashboard dashboard={dashboard} perfil={perfil} />
       </main>}
 
-      {tela === 'biblioteca' && <main id="biblioteca">
+      {tela === 'biblioteca' && modoBiblioteca && <LibraryGameScreen
+        game={modoBiblioteca === 'editar' ? jogoEmEdicao : null}
+        platforms={plataformas}
+        saving={salvando}
+        onSubmit={enviarJogo}
+        onBack={voltarParaBiblioteca}
+        message={mensagem}
+      />}
+
+      {tela === 'biblioteca' && !modoBiblioteca && <main id="biblioteca">
         <header className="page-header">
           <div>
             <span className="eyebrow">SUA COLEÇÃO</span>
@@ -231,34 +244,12 @@ function App() {
           <div className="collection-count"><strong>{itens.length}</strong><span>{itens.length === 1 ? 'jogo na coleção' : 'jogos na coleção'}</span></div>
         </header>
 
+        <div className="library-top-actions">
+          <LibraryProgressSummary summary={resumoProgresso} />
+          <button type="button" className="library-add-button" onClick={abrirCadastro}>Adicionar jogo</button>
+        </div>
+        {mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}
         <LibraryScreen items={itens} loading={carregando} onEdit={abrirEdicao} />
-        <LibraryProgressSummary summary={resumoProgresso} />
-
-        <details
-          className="library-add-panel form-card"
-          open={editorAberto}
-          onToggle={(evento) => setEditorAberto(evento.currentTarget.open)}
-        >
-          <summary>
-            <div className="card-heading">
-              <span className="heading-icon"><Icon><path d="M12 5v14M5 12h14"/></Icon></span>
-              <div>
-                <h2>{jogoEmEdicao ? 'Editar jogo' : 'Adicionar novo jogo'}</h2>
-                <p>{jogoEmEdicao ? 'Marque todas as plataformas onde você possui este jogo.' : 'Cadastre um jogo na sua coleção.'}</p>
-              </div>
-            </div>
-          </summary>
-
-          <LibraryGameForm
-            key={jogoEmEdicao?.jogoId ?? 'novo'}
-            platforms={plataformas}
-            saving={salvando}
-            onSubmit={enviarJogo}
-            initialGame={jogoEmEdicao}
-            onCancel={cancelarEdicao}
-          />
-          {mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}
-        </details>
       </main>}
 
       {tela === 'lista-desejos' && <WishlistScreen />}

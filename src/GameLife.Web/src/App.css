@@ -2007,10 +2007,20 @@ button:disabled {
   padding: 48px 24px; border: 1px dashed var(--line); border-radius: 18px;
   color: var(--muted); text-align: center;
 }
-.library-add-panel { margin-top: 26px; }
-.library-add-panel summary { list-style: none; cursor: pointer; }
-.library-add-panel summary::-webkit-details-marker { display: none; }
-.library-add-panel form { margin-top: 24px; }
+.library-top-actions {
+  max-width: 1200px; margin: -12px auto 32px; display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px; align-items: stretch; gap: 14px;
+}
+.library-top-actions .library-progress-summary { min-width: 0; margin: 0; }
+.library-add-button { width: 100%; min-height: 72px; }
+.library-game-screen .page-header { align-items: flex-start; margin-top: 26px; }
+.library-back-button {
+  width: auto; min-height: 40px; padding: 9px 16px; border: 1px solid var(--line-strong);
+  background: transparent; color: var(--ink); box-shadow: none;
+}
+.library-back-button:hover { border-color: var(--purple); background: rgba(139, 92, 246, .12); }
+.library-editor-card { max-width: 1200px; margin: 0 auto; }
+.library-editor-card > .feedback { margin-top: 16px; }
 .library-game-form { display: grid; gap: 20px; }
 .library-game-main-fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr); gap: 0 16px; }
 .library-game-main-fields label { align-self: end; }
@@ -2042,7 +2052,6 @@ button:disabled {
 .library-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .library-form-actions button { width: min(100%, 280px); }
 .library-form-actions .secondary-button { border: 1px solid var(--line-strong); background: transparent; color: var(--ink); box-shadow: none; }
-.library-add-panel > .feedback { margin-top: 16px; }
 
 @media (max-width: 1080px) {
   .library-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2052,6 +2061,8 @@ button:disabled {
   .library-search { justify-self: stretch; width: 100%; }
   .library-filters { align-items: flex-start; flex-direction: column; }
   .library-card-grid { grid-template-columns: 1fr; }
+  .library-top-actions { grid-template-columns: 1fr; }
+  .library-add-button { min-height: 48px; }
   .library-game-main-fields,
   .tracking-fields { grid-template-columns: 1fr; }
   .selected-platforms { grid-template-columns: 1fr; }
