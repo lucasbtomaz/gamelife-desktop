@@ -1,8 +1,7 @@
-$scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'create-shortcut.ps1'
-
 Describe 'Atalho desktop do GameLife' {
     BeforeAll {
-        . $scriptPath -LibraryOnly
+        $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'create-shortcut.ps1'
+        . $script:scriptPath -LibraryOnly
     }
 
     It 'usa o executavel publicado dentro do repositorio como o FinBot' {

@@ -1,8 +1,7 @@
-$scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'start-local.ps1'
-
 Describe 'Inicializador local do GameLife' {
     BeforeAll {
-        . $scriptPath
+        $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'start-local.ps1'
+        . $script:scriptPath
     }
 
     It 'rejeita resposta de outro aplicativo na mesma porta' {
