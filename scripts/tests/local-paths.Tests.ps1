@@ -1,8 +1,7 @@
-$scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'local-paths.ps1'
-
 Describe 'Caminhos locais estaveis do GameLife' {
     BeforeAll {
-        . $scriptPath
+        $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'local-paths.ps1'
+        . $script:scriptPath
     }
 
     It 'resolve LocalApplicationData fora de pacotes virtualizados' {

@@ -49,6 +49,10 @@ namespace gamelife_api.Context
                 .HasIndex(item => new { item.JogoId, item.CanalId })
                 .IsUnique();
 
+            modelBuilder.Entity<PosseJogo>()
+                .HasIndex(item => new { item.JogoId, item.CanalId })
+                .IsUnique();
+
             modelBuilder.Entity<AcompanhamentoJogo>()
                 .HasOne(item => item.Jogo)
                 .WithMany()

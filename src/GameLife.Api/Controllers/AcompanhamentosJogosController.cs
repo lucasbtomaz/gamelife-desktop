@@ -35,21 +35,37 @@ public sealed class AcompanhamentosJogosController : ControllerBase
     public async Task<ActionResult<ResumoAcompanhamentosResponse>> ObterResumo(CancellationToken cancellationToken)
     {
         var acompanhamentos = await _contexto.AcompanhamentosJogos.AsNoTracking()
-            .Select(item => new { item.JogoId, item.CanalId, item.Status })
+            .Select(item => new { item.JogoId, item.Status })
             .ToListAsync(cancellationToken);
-        var posses = await _contexto.PossesJogos.AsNoTracking()
-            .Select(item => new { item.JogoId, item.CanalId })
+        var jogosNaBiblioteca = await _contexto.PossesJogos.AsNoTracking()
+            .Select(item => item.JogoId)
             .Distinct()
             .ToListAsync(cancellationToken);
-        var chavesAcompanhadas = acompanhamentos
-            .Select(item => (item.JogoId, item.CanalId))
-            .ToHashSet();
-        var zerados = acompanhamentos.Count(item => item.Status == StatusAcompanhamentoJogo.Zerado);
-        var dropados = acompanhamentos.Count(item => item.Status == StatusAcompanhamentoJogo.Dropado);
-        var naoTerminados = acompanhamentos.Count(item => item.Status == StatusAcompanhamentoJogo.NaoTerminado)
-            + posses.Count(item => !chavesAcompanhadas.Contains((item.JogoId, item.CanalId)));
+
+        var statusPorJogo = acompanhamentos
+            .GroupBy(item => item.JogoId)
+            .ToDictionary(grupo => grupo.Key, grupo => grupo.Select(item => item.Status).ToHashSet());
+        var jogos = jogosNaBiblioteca
+            .Concat(acompanhamentos.Select(item => item.JogoId))
+            .Distinct()
+            .ToList();
+        var zerados = 0;
+        var dropados = 0;
+        var naoTerminados = 0;
+        foreach (var jogoId in jogos)
+        {
+            if (!statusPorJogo.TryGetValue(jogoId, out var status) || status.Count == 0)
+                naoTerminados++;
+            else if (status.Contains(StatusAcompanhamentoJogo.Zerado))
+                zerados++;
+            else if (status.Contains(StatusAcompanhamentoJogo.Dropado))
+                dropados++;
+            else
+                naoTerminados++;
+        }
+
         return Ok(new ResumoAcompanhamentosResponse(
-            zerados + dropados + naoTerminados,
+            jogos.Count,
             zerados,
             dropados,
             naoTerminados));
