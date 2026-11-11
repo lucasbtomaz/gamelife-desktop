@@ -15,9 +15,14 @@ public sealed class BibliotecaService
     public BibliotecaService(GameLifeDbContext contexto) => _contexto = contexto;
 
     public static IQueryable<ItemBibliotecaPlataformaProjection> CriarConsultaPlana(
-        GameLifeDbContext contexto)
+        GameLifeDbContext contexto,
+        int? gameId = null)
     {
-        return from posse in contexto.PossesJogos.AsNoTracking()
+        var ownerships = contexto.PossesJogos.AsNoTracking();
+        if (gameId.HasValue)
+            ownerships = ownerships.Where(item => item.JogoId == gameId.Value);
+
+        return from posse in ownerships
             join acompanhamento in contexto.AcompanhamentosJogos.AsNoTracking()
                 on new { posse.JogoId, posse.CanalId }
                 equals new { acompanhamento.JogoId, acompanhamento.CanalId }
@@ -60,6 +65,7 @@ public sealed class BibliotecaService
         Validar(request);
         await EscritaGate.WaitAsync(cancellationToken);
         IDbContextTransaction? transaction = null;
+        var transactionCommitted = false;
         try
         {
             if (_contexto.Database.IsRelational())
@@ -141,16 +147,28 @@ public sealed class BibliotecaService
             }
 
             await _contexto.SaveChangesAsync(cancellationToken);
-            if (transaction is not null)
-                await transaction.CommitAsync(cancellationToken);
-
             var response = await ObterJogoAsync(game.Id, cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                transactionCommitted = true;
+            }
+
             return new SalvarJogoBibliotecaResult(response, created);
         }
         catch
         {
-            if (transaction is not null)
-                await transaction.RollbackAsync(CancellationToken.None);
+            if (transaction is not null && !transactionCommitted)
+            {
+                try
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                catch
+                {
+                    // A falha original é mais importante que uma falha ao desfazer a transação.
+                }
+            }
             throw;
         }
         finally
@@ -165,9 +183,7 @@ public sealed class BibliotecaService
         int gameId,
         CancellationToken cancellationToken)
     {
-        var rows = await CriarConsultaPlana(_contexto)
-            .Where(item => item.JogoId == gameId)
-            .ToListAsync(cancellationToken);
+        var rows = await CriarConsultaPlana(_contexto, gameId).ToListAsync(cancellationToken);
         return Agrupar(rows).Single();
     }
 
