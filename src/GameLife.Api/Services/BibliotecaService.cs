@@ -72,9 +72,9 @@ public sealed class BibliotecaService
                 transaction = await _contexto.Database.BeginTransactionAsync(cancellationToken);
 
             var title = request.Titulo.Trim();
-            var titleKey = NormalizarChave(title);
+            var titleKey = NormalizarTitulo(title);
             var games = await _contexto.Jogos.ToListAsync(cancellationToken);
-            var game = games.FirstOrDefault(item => NormalizarChave(item.Titulo) == titleKey);
+            var game = games.FirstOrDefault(item => NormalizarTitulo(item.Titulo) == titleKey);
             var created = game is null;
             if (game is null)
             {
@@ -268,6 +268,14 @@ public sealed class BibliotecaService
 
     public static string NormalizarChave(string value) =>
         value.Trim().Normalize(NormalizationForm.FormKC).ToUpperInvariant();
+
+    public static string NormalizarTitulo(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var normalized = value.Trim().Normalize(NormalizationForm.FormKC).ToUpperInvariant();
+        var characters = normalized.Select(character => char.IsLetterOrDigit(character) ? character : ' ').ToArray();
+        return string.Join(" ", new string(characters).Split([' '], StringSplitOptions.RemoveEmptyEntries));
+    }
 }
 
 public sealed record SalvarJogoBibliotecaResult(JogoBibliotecaResponse Jogo, bool Criado);

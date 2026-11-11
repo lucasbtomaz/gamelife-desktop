@@ -93,6 +93,15 @@ namespace gamelife_api.Controllers
                 return BadRequest(ModelState);
             }
 
+            var tituloNormalizado = BibliotecaController.NormalizarTitulo(jogo.Titulo);
+            var jogosExistentes = await _contexto.Jogos.ToListAsync();
+            var duplicado = jogosExistentes.FirstOrDefault(j => BibliotecaController.NormalizarTitulo(j.Titulo) == tituloNormalizado);
+
+            if (duplicado != null)
+            {
+                return Conflict(new { erro = $"O jogo \"{duplicado.Titulo}\" já está cadastrado. Variações apenas de maiúsculas/minúsculas, espaços ou pontuação não são permitidas." });
+            }
+
             _contexto.Jogos.Add(jogo);
             await _contexto.SaveChangesAsync();
 

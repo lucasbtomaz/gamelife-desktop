@@ -2067,3 +2067,375 @@ button:disabled {
   .tracking-fields { grid-template-columns: 1fr; }
   .selected-platforms { grid-template-columns: 1fr; }
 }
+
+/* ========================================================= */
+/* BARRA DE BUSCA DA BIBLIOTECA & CARTÃO SPOTIFY WRAPPED     */
+/* ========================================================= */
+
+.library-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.library-search-wrap .search-icon {
+  position: absolute;
+  left: 14px;
+  color: #71717a;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.library-search-wrap input {
+  width: 100%;
+  padding: 10px 38px 10px 40px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  color: #f4f4f5;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.library-search-wrap input:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.library-search-wrap .clear-search-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 13px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.library-search-wrap .clear-search-btn:hover {
+  color: #fafafa;
+}
+
+.btn-clean-filter {
+  margin-top: 14px;
+  padding: 8px 16px;
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
+  color: #e4e4e7;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clean-filter:hover {
+  background: #3f3f46;
+  color: #fff;
+}
+
+.btn-wrapped-download {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+  box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4) !important;
+}
+
+.btn-wrapped-download:hover {
+  box-shadow: 0 12px 28px rgba(236, 72, 153, 0.6) !important;
+}
+
+.wrapped-card-preview-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.wrapped-card-preview-section .preview-heading {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.wrapped-card-preview-section .preview-heading h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  margin: 4px 0 8px 0;
+}
+
+.wrapped-card-preview-section .preview-heading p {
+  font-size: 13px;
+  color: #94a3b8;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.wrapped-card-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.spotify-wrapped-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px 24px;
+  border-radius: 28px;
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(139, 92, 246, 0.25);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.card-brand-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-brand-row .brand-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-brand-row .brand-icon {
+  font-size: 22px;
+}
+
+.card-brand-row .brand-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.card-brand-row .brand-sub {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  color: #c084fc;
+  letter-spacing: 1.5px;
+}
+
+.card-brand-row .year-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #34d399;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.card-persona-box {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.6), rgba(15, 23, 42, 0.8));
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  text-align: center;
+}
+
+.card-persona-box .persona-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: #d8b4fe;
+  letter-spacing: 1.5px;
+}
+
+.card-persona-box .persona-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+  margin: 4px 0 6px 0;
+}
+
+.card-persona-box .persona-desc {
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.card-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.card-metrics-grid .metric-box {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 14px;
+  padding: 12px 6px;
+  text-align: center;
+}
+
+.card-metrics-grid .metric-val {
+  display: block;
+  font-size: 17px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.card-metrics-grid .metric-lbl {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.card-top-games {
+  margin-top: 16px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.top-games-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.top-game-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.top-game-row:last-child {
+  border-bottom: none;
+}
+
+.top-game-row .game-rank {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.top-game-row .game-rank.rank-1 {
+  background: #f59e0b;
+  color: #000;
+}
+
+.top-game-row .game-rank.rank-2 {
+  background: #94a3b8;
+  color: #000;
+}
+
+.top-game-row .game-rank.rank-3 {
+  background: #b45309;
+  color: #fff;
+}
+
+.top-game-row .game-rank.rank-4 {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+.top-game-row .game-name {
+  font-weight: 700;
+  color: #fff;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 8px;
+}
+
+.top-game-row .game-hours {
+  color: #67e8f9;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.card-milestones-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.card-milestones-row .milestone-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.card-milestones-row .milestone-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.card-milestones-row .milestone-val {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-footer-row .footer-tag {
+  font-size: 9px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.card-footer-row .soundwave-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 24px;
+}
+
+.card-footer-row .soundwave-bar span {
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to top, #8b5cf6, #ec4899);
+}

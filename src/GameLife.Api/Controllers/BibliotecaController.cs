@@ -22,6 +22,9 @@ public sealed class BibliotecaController : ControllerBase
         GameLifeDbContext contexto) =>
         BibliotecaService.CriarConsultaPlana(contexto);
 
+    public static string NormalizarTitulo(string? titulo) =>
+        BibliotecaService.NormalizarTitulo(titulo);
+
     [HttpPost]
     public async Task<ActionResult<JogoBibliotecaResponse>> Salvar(
         [FromBody] SalvarJogoBibliotecaRequest request,

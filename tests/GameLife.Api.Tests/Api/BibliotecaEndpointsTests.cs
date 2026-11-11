@@ -100,6 +100,23 @@ public sealed class BibliotecaEndpointsTests : IClassFixture<GameLifeApiFactory>
     }
 
     [Fact]
+    public async Task ReutilizaFichaQuandoOTituloMudaApenasEmCaixaEspacosOuPontuacao()
+    {
+        var identificador = Guid.NewGuid().ToString("N");
+        var titulo = $"Jogo: Especial {identificador}";
+        await Cadastrar(titulo, new { plataforma = "PC", midiaFisica = false });
+
+        var response = await Cadastrar(
+            $"  jogo especial {identificador.ToUpperInvariant()}  ",
+            new { plataforma = "STEAM", midiaFisica = false });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var games = await _client.GetFromJsonAsync<List<JogoBibliotecaResponse>>("/biblioteca");
+        var game = Assert.Single(games!, item => item.Titulo == titulo);
+        Assert.Equal(2, game.Plataformas.Count);
+    }
+
+    [Fact]
     public async Task OmitirAcompanhamentoPreservaOExistente()
     {
         var titulo = $"Progresso preservado {Guid.NewGuid()}";
