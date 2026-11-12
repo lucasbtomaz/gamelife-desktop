@@ -66,8 +66,8 @@ public sealed class ItensListaDesejosController : ControllerBase
         else if (!string.IsNullOrWhiteSpace(request.NomeCanal))
         {
             var nome = request.NomeCanal.Trim();
-            var normalizado = nome.ToLower();
-            canal = await _contexto.Canais.FirstOrDefaultAsync(item => item.Nome.Trim().ToLower() == normalizado);
+            var canais = await _contexto.Canais.ToListAsync();
+            canal = canais.FirstOrDefault(item => string.Equals(item.Nome.Trim(), nome, StringComparison.OrdinalIgnoreCase));
             canal ??= new Canal { Nome = nome, PermitePreco = true };
         }
         if (canal is null) return BadRequest(new { mensagem = "Informe uma loja válida." });
