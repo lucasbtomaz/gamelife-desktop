@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { listGameTrackings } from '../api/gameTracking.js';
+import { formatarPercentual, limitarPercentual } from '../utils/percentual.js';
 
 const Icon = ({ children, size = 18 }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -23,23 +24,41 @@ const MESES = [
   { num: 12, nome: 'Dezembro' }
 ];
 
-// Dados demonstrativos caso a API ainda não tenha registros cadastrados
-const DADOS_DEMO = [
-  { id: 1, titulo: 'The Witcher 3: Wild Hunt', plataforma: 'STEAM', status: 'Zerado', tempoEmHoras: 124.5, conquistasObtidas: 65, conquistasPossiveis: 78, dataStatus: '2026-08-14' },
-  { id: 2, titulo: 'Cyberpunk 2077', plataforma: 'PC', status: 'Zerado', tempoEmHoras: 86.0, conquistasObtidas: 38, conquistasPossiveis: 44, dataStatus: '2026-10-25' },
-  { id: 3, titulo: 'Elden Ring', plataforma: 'PlayStation 5', status: 'NaoTerminado', tempoEmHoras: 71.0, conquistasObtidas: 30, conquistasPossiveis: 42, dataStatus: '2026-11-02' },
-  { id: 4, titulo: 'Baldur\'s Gate 3', plataforma: 'STEAM', status: 'NaoTerminado', tempoEmHoras: 52.0, conquistasObtidas: 34, conquistasPossiveis: 54, dataStatus: '2026-11-03' },
-  { id: 5, titulo: 'Hades II', plataforma: 'STEAM', status: 'Zerado', tempoEmHoras: 38.0, conquistasObtidas: 30, conquistasPossiveis: 35, dataStatus: '2026-11-04' },
-  { id: 6, titulo: 'Hollow Knight', plataforma: 'Nintendo Switch', status: 'Zerado', tempoEmHoras: 58.0, conquistasObtidas: 63, conquistasPossiveis: 63, dataStatus: '2026-05-18' }
-];
+function obterPeriodo(data = new Date()) {
+  return { ano: data.getFullYear(), mes: data.getMonth() + 1 };
+}
+
+function obterPeriodoAnterior({ ano, mes }) {
+  return mes === 1 ? { ano: ano - 1, mes: 12 } : { ano, mes: mes - 1 };
+}
+
+function extrairPeriodoData(valor) {
+  if (!valor) return null;
+  const correspondencia = String(valor).match(/^(\d{4})-(\d{2})/);
+  if (correspondencia) {
+    return { ano: Number(correspondencia[1]), mes: Number(correspondencia[2]) };
+  }
+
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return null;
+  return { ano: data.getFullYear(), mes: data.getMonth() + 1 };
+}
+
+function rotuloStatus(status) {
+  if (status === 'Zerado') return 'Zerado';
+  if (status === 'Dropado') return 'Dropado';
+  return 'Em andamento';
+}
 
 export default function PainelRetrospectiva() {
+  const periodoAtual = useMemo(() => obterPeriodo(), []);
+  const periodoAnterior = useMemo(() => obterPeriodoAnterior(periodoAtual), [periodoAtual]);
   const [itens, setItens] = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [ano, setAno] = useState(2026);
-  const [mes, setMes] = useState(11); // Novembro
-  const [modo, setModo] = useState('mensal'); // 'mensal' | 'wrapped'
-  const [filtroLista, setFiltroLista] = useState('todos'); // 'todos' | 'zerados' | 'jogando'
+  const [erro, setErro] = useState('');
+  const [ano, setAno] = useState(periodoAtual.ano);
+  const [mes, setMes] = useState(periodoAtual.mes);
+  const [modo, setModo] = useState('mensal');
   const [copiado, setCopiado] = useState(false);
 
   // Estados e referência para html2canvas (Spotify Wrapped share card)
@@ -50,36 +69,23 @@ export default function PainelRetrospectiva() {
   useEffect(() => {
     listGameTrackings()
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setItens(data);
-        } else {
-          setItens(DADOS_DEMO);
-        }
+        setItens(Array.isArray(data) ? data : []);
+        setErro('');
       })
       .catch(() => {
-        setItens(DADOS_DEMO);
+        setItens([]);
+        setErro('Não foi possível carregar a retrospectiva. Tente novamente mais tarde.');
       })
       .finally(() => setCarregando(false));
   }, []);
 
   // Processar estatísticas baseado no período selecionado
   const estatisticas = useMemo(() => {
-    const listaBase = itens.length > 0 ? itens : DADOS_DEMO;
-
-    // Filtro por mês e ano
-    const filtrados = listaBase.filter(item => {
-      if (!item.dataStatus) return true;
-      const data = new Date(item.dataStatus);
-      const anoItem = data.getFullYear();
-      const mesItem = data.getMonth() + 1;
-
-      if (mes === null) {
-        return isNaN(anoItem) || anoItem === ano;
-      }
-      return (isNaN(anoItem) || anoItem === ano) && (isNaN(mesItem) || mesItem === mes);
+    const itensParaUso = itens.filter(item => {
+      const periodo = extrairPeriodoData(item.dataStatus);
+      if (!periodo || periodo.ano !== ano) return false;
+      return mes === null || periodo.mes === mes;
     });
-
-    const itensParaUso = filtrados.length > 0 ? filtrados : listaBase;
 
     const tempoTotalHoras = Number(itensParaUso.reduce((acc, curr) => acc + (Number(curr.tempoEmHoras) || 0), 0).toFixed(1));
     const tempoTotalDias = Number((tempoTotalHoras / 24).toFixed(1));
@@ -94,13 +100,13 @@ export default function PainelRetrospectiva() {
     // Plataforma mais jogada
     const contagemPlataformas = itensParaUso.reduce((acc, item) => {
       const plat = item.plataforma || 'Outra';
-      acc[plat] = (acc[plat] || 0) + (Number(item.tempoEmHoras) || 1);
+      acc[plat] = (acc[plat] || 0) + Math.max(0, Number(item.tempoEmHoras) || 0);
       return acc;
     }, {});
-    const plataformaFavorita = Object.entries(contagemPlataformas).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Steam';
+    const plataformaFavorita = Object.entries(contagemPlataformas).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Sem dados';
 
     // Primeiro e último jogo do ano
-    const ordenadosPorData = [...listaBase].sort((a, b) => {
+    const ordenadosPorData = [...itensParaUso].sort((a, b) => {
       const dataA = a.dataStatus ? new Date(a.dataStatus).getTime() : 0;
       const dataB = b.dataStatus ? new Date(b.dataStatus).getTime() : 0;
       return dataA - dataB;
@@ -199,20 +205,17 @@ Acompanhado via GameLife Desktop 🕹️`;
     }
   };
 
-  const listaFiltrada = estatisticas.itensParaUso.filter(item => {
-    if (filtroLista === 'zerados') return item.status === 'Zerado';
-    if (filtroLista === 'jogando') return item.status !== 'Zerado';
-    return true;
-  });
+  const periodoSelecionado = mes
+    ? `${MESES.find(item => item.num === mes)?.nome}/${ano}`
+    : `Retrospectiva Anual ${ano}`;
 
   return (
     <main id="retrospectiva" className="retrospectiva-container">
-      {/* CABEÇALHO COM TEMA GAMER SPOTIFY WRAPPED */}
       <header className="page-header retrospectiva-header">
-        <div>
-          <span className="eyebrow">ESTATÍSTICAS & REVIEW</span>
-          <h1>Retrospectiva de Jogos</h1>
-          <p>Seus jogos mais jogados, horas dedicadas e retrospectiva anual estilo Spotify Wrapped.</p>
+        <div className="retrospectiva-title-block">
+          <span className="eyebrow">RETROSPECTIVA & REVIEW DE JOGATINA</span>
+          <h1>Review do Gamer ✨</h1>
+          <p>Veja seus jogos mais jogados, horas dedicadas e conquistas do período.</p>
         </div>
 
         <div className="retrospectiva-actions">
@@ -239,30 +242,29 @@ Acompanhado via GameLife Desktop 🕹️`;
         </div>
       </header>
 
-      {/* BARRA DE SELEÇÃO DE PERÍODO & MODO */}
       <div className="retrospectiva-toolbar">
         <div className="period-selectors">
           <span className="period-label">Período:</span>
           <button
             type="button"
-            className={`period-btn ${ano === 2026 && mes === 11 ? 'active' : ''}`}
-            onClick={() => { setAno(2026); setMes(11); }}
+            className={`period-btn ${ano === periodoAtual.ano && mes === periodoAtual.mes ? 'active' : ''}`}
+            onClick={() => { setAno(periodoAtual.ano); setMes(periodoAtual.mes); setModo('mensal'); }}
           >
-            Novembro/2026 (Atual)
+            {MESES.find(item => item.num === periodoAtual.mes)?.nome}/{periodoAtual.ano} (Atual)
           </button>
           <button
             type="button"
-            className={`period-btn ${ano === 2026 && mes === 10 ? 'active' : ''}`}
-            onClick={() => { setAno(2026); setMes(10); }}
+            className={`period-btn ${ano === periodoAnterior.ano && mes === periodoAnterior.mes ? 'active' : ''}`}
+            onClick={() => { setAno(periodoAnterior.ano); setMes(periodoAnterior.mes); setModo('mensal'); }}
           >
-            Outubro/2026
+            {MESES.find(item => item.num === periodoAnterior.mes)?.nome}/{periodoAnterior.ano}
           </button>
           <button
             type="button"
-            className={`period-btn wrapped-btn ${ano === 2026 && mes === null ? 'active' : ''}`}
-            onClick={() => { setAno(2026); setMes(null); setModo('wrapped'); }}
+            className={`period-btn wrapped-btn ${ano === periodoAtual.ano && mes === null ? 'active' : ''}`}
+            onClick={() => { setAno(periodoAtual.ano); setMes(null); setModo('wrapped'); }}
           >
-            ✨ Retrospectiva Anual 2026
+            Retrospectiva Anual {periodoAtual.ano}
           </button>
         </div>
 
@@ -270,16 +272,23 @@ Acompanhado via GameLife Desktop 🕹️`;
           <button
             type="button"
             className={`mode-btn ${modo === 'mensal' ? 'active' : ''}`}
-            onClick={() => setModo('mensal')}
+            onClick={() => {
+              setModo('mensal');
+              if (mes === null) {
+                setAno(periodoAtual.ano);
+                setMes(periodoAtual.mes);
+              }
+            }}
           >
-            Review Mensal
+            Review do Período
           </button>
           <button
             type="button"
             className={`mode-btn ${modo === 'wrapped' ? 'active' : ''}`}
-            onClick={() => setModo('wrapped')}
+            onClick={() => { setModo('wrapped'); setAno(periodoAtual.ano); setMes(null); }}
+            aria-label="Retrospectiva Anual"
           >
-            Wrapped Anual
+            Wrapped
           </button>
         </div>
       </div>
@@ -288,6 +297,12 @@ Acompanhado via GameLife Desktop 🕹️`;
         <div className="empty-state">
           <span className="loader" />
           <h3>Calculando suas estatísticas e horas de jogo...</h3>
+        </div>
+      )}
+
+      {!carregando && erro && (
+        <div className="feedback erro page-feedback retrospectiva-feedback" role="alert">
+          {erro}
         </div>
       )}
 
@@ -301,101 +316,105 @@ Acompanhado via GameLife Desktop 🕹️`;
       {/* ========================================= */}
       {/* MODO 1: REVIEW MENSAL / PERÍODO           */}
       {/* ========================================= */}
-      {modo === 'mensal' && (
+      {modo === 'mensal' && !carregando && !erro && (
         <div className="retrospectiva-content">
-          {/* CARDS DE RESUMO DO PERÍODO */}
-          <div className="summary-cards-grid">
-            <div className="summary-card stat-purple">
-              <div className="stat-icon">⏱️</div>
-              <div className="stat-data">
-                <span className="stat-number">{estatisticas.tempoTotalHoras}h</span>
-                <span className="stat-label">Tempo Total ({estatisticas.tempoTotalDias} dias)</span>
-              </div>
+          {estatisticas.itensParaUso.length === 0 ? (
+            <div className="empty-state retrospectiva-empty">
+              <h3>Nenhum jogo registrado neste período.</h3>
+              <p>Os jogos aparecerão aqui quando houver registros em {periodoSelecionado}.</p>
             </div>
-
-            <div className="summary-card stat-amber">
-              <div className="stat-icon">🏆</div>
-              <div className="stat-data">
-                <span className="stat-number">{estatisticas.totalConquistas}</span>
-                <span className="stat-label">Conquistas Desbloqueadas</span>
-              </div>
-            </div>
-
-            <div className="summary-card stat-emerald">
-              <div className="stat-icon">🎮</div>
-              <div className="stat-data">
-                <span className="stat-number">{estatisticas.zerados.length}</span>
-                <span className="stat-label">Jogos Finalizados</span>
-              </div>
-            </div>
-
-            <div className="summary-card stat-cyan">
-              <div className="stat-icon">🎯</div>
-              <div className="stat-data">
-                <span className="stat-number">{estatisticas.plataformaFavorita}</span>
-                <span className="stat-label">Plataforma Favorita</span>
-              </div>
-            </div>
-          </div>
-
-          {/* LISTA DE JOGOS DO PERÍODO COM ABAS */}
-          <section className="retrospectiva-list-panel">
-            <div className="list-panel-header">
-              <div>
-                <span className="eyebrow">HISTÓRICO</span>
-                <h2>Jogos no Período</h2>
-              </div>
-
-              <div className="category-tabs">
-                <button
-                  type="button"
-                  className={`tab-filter ${filtroLista === 'todos' ? 'active' : ''}`}
-                  onClick={() => setFiltroLista('todos')}
-                >
-                  Todos ({estatisticas.itensParaUso.length})
-                </button>
-                <button
-                  type="button"
-                  className={`tab-filter ${filtroLista === 'zerados' ? 'active' : ''}`}
-                  onClick={() => setFiltroLista('zerados')}
-                >
-                  Zerados ({estatisticas.zerados.length})
-                </button>
-                <button
-                  type="button"
-                  className={`tab-filter ${filtroLista === 'jogando' ? 'active' : ''}`}
-                  onClick={() => setFiltroLista('jogando')}
-                >
-                  Jogando ({estatisticas.jogando.length})
-                </button>
-              </div>
-            </div>
-
-            <div className="game-grid-cards">
-              {listaFiltrada.map((item) => (
-                <article key={item.id} className="game-status-card">
-                  <div className="card-top">
-                    <span className="platform-tag">{item.plataforma}</span>
-                    <span className={`status-badge status-${item.status || 'NaoTerminado'}`}>
-                      {item.status === 'Zerado' ? 'Zerado' : 'Jogando'}
-                    </span>
-                  </div>
-                  <h3>{item.titulo}</h3>
-                  <div className="card-bottom">
-                    <span>⏱️ {item.tempoEmHoras || 0} horas</span>
-                    <span>🏆 {item.conquistasObtidas || 0} / {item.conquistasPossiveis || 0}</span>
-                  </div>
+          ) : (
+            <>
+              <div className="retrospectiva-metrics-grid" aria-label="Indicadores do período">
+                <article className="retrospectiva-metric metric-purple">
+                  <span>Tempo de jogatina</span>
+                  <strong>{estatisticas.tempoTotalHoras} horas</strong>
+                  <small>Equivalente a {estatisticas.tempoTotalDias} dias</small>
                 </article>
-              ))}
-            </div>
-          </section>
+                <article className="retrospectiva-metric metric-amber">
+                  <span>Conquistas desbloqueadas</span>
+                  <strong>{estatisticas.totalConquistas}</strong>
+                  <small>Somadas em todos os jogos</small>
+                </article>
+                <article className="retrospectiva-metric metric-cyan">
+                  <span>Biblioteca ativa</span>
+                  <strong>{estatisticas.itensParaUso.length} jogos</strong>
+                  <small>{estatisticas.zerados.length} zerados · {estatisticas.jogando.length} em andamento</small>
+                </article>
+                <article className="retrospectiva-metric metric-emerald">
+                  <span>Top 1 do período</span>
+                  <strong>{estatisticas.maisJogados[0]?.titulo}</strong>
+                  <small>{estatisticas.maisJogados[0]?.tempoEmHoras || 0} horas · {estatisticas.plataformaFavorita}</small>
+                </article>
+              </div>
+
+              <section
+                className="retrospectiva-ranking-panel"
+                aria-label="Jogos mais jogados no período"
+              >
+                <div className="retrospectiva-ranking-header">
+                  <div>
+                    <span className="eyebrow">CLASSIFICAÇÃO DE HORAS</span>
+                    <h2>🏆 Jogos mais jogados no período</h2>
+                    <p>Ranking dos jogos em que você mais investiu tempo em {periodoSelecionado}.</p>
+                  </div>
+                  <span className="retrospectiva-total">Total: {estatisticas.itensParaUso.length} jogos</span>
+                </div>
+
+                <div className="retrospectiva-ranking-list">
+                  {estatisticas.maisJogados.map((item, indice) => {
+                    const percentualTempo = estatisticas.tempoTotalHoras > 0
+                      ? limitarPercentual(((Number(item.tempoEmHoras) || 0) / estatisticas.tempoTotalHoras) * 100)
+                      : 0;
+
+                    return (
+                      <article
+                        key={item.id}
+                        className="retrospectiva-ranking-item"
+                        aria-label={`#${indice + 1} ${item.titulo}`}
+                      >
+                        <span className={`retrospectiva-position position-${indice + 1}`}>#{indice + 1}</span>
+                        <div className="retrospectiva-game-icon" aria-hidden="true">🎮</div>
+                        <div className="retrospectiva-game-main">
+                          <div className="retrospectiva-game-title-row">
+                            <h3>{item.titulo}</h3>
+                            <span className={`retrospectiva-status status-${item.status || 'NaoTerminado'}`}>
+                              {rotuloStatus(item.status)}
+                            </span>
+                          </div>
+                          <p>{item.plataforma || 'Plataforma não informada'}</p>
+                        </div>
+                        <div className="retrospectiva-achievements">
+                          <span>Conquistas</span>
+                          <strong>🏆 {item.conquistasObtidas || 0} / {item.conquistasPossiveis || 0}</strong>
+                        </div>
+                        <div className="retrospectiva-time">
+                          <strong>◷ {item.tempoEmHoras || 0}h</strong>
+                          <span>{formatarPercentual(percentualTempo)} do tempo</span>
+                          <div className="retrospectiva-time-track" aria-hidden="true">
+                            <span style={{ width: `${percentualTempo}%` }} />
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            </>
+          )}
         </div>
       )}
 
       {/* ========================================= */}
       {/* MODO 2: RETROSPECTIVA ANUAL (WRAPPED)     */}
       {/* ========================================= */}
-      {modo === 'wrapped' && (
+      {modo === 'wrapped' && !carregando && !erro && (
+        estatisticas.itensParaUso.length === 0 ? (
+          <div className="empty-state retrospectiva-empty">
+            <h3>Nenhum jogo registrado neste período.</h3>
+            <p>Os jogos aparecerão aqui quando houver registros em {periodoSelecionado}.</p>
+          </div>
+        ) : (
         <div className="wrapped-experience">
           {/* BANNER SPOTIFY WRAPPED */}
           <div className="wrapped-hero-card">
@@ -583,6 +602,7 @@ Acompanhado via GameLife Desktop 🕹️`;
             </div>
           </div>
         </div>
+        )
       )}
     </main>
   );
