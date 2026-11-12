@@ -1381,14 +1381,13 @@ button:disabled {
   max-width: 1200px;
   margin: auto;
   display: grid;
-  grid-template-columns: minmax(320px, 400px) 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   align-items: start;
 }
 
 .tracking-form {
-  position: sticky;
-  top: 28px;
+  position: static;
 }
 
 .tracking-form h2 {
