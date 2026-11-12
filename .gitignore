@@ -25,6 +25,7 @@ imports/
 *.sql
 *.db
 .superpowers/
+.worktrees/
 src/GameLife.Web/dist/
 src/GameLife.Web/build/
 

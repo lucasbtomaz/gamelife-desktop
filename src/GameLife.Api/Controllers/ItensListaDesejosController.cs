@@ -66,12 +66,11 @@ public sealed class ItensListaDesejosController : ControllerBase
         else if (!string.IsNullOrWhiteSpace(request.NomeCanal))
         {
             var nome = request.NomeCanal.Trim();
-            var normalizado = nome.ToLower();
-            canal = await _contexto.Canais.FirstOrDefaultAsync(item => item.Nome.Trim().ToLower() == normalizado);
+            var canais = await _contexto.Canais.ToListAsync();
+            canal = canais.FirstOrDefault(item => string.Equals(item.Nome.Trim(), nome, StringComparison.OrdinalIgnoreCase));
             canal ??= new Canal { Nome = nome, PermitePreco = true };
         }
         if (canal is null) return BadRequest(new { mensagem = "Informe uma loja válida." });
-        if (canal.Id > 0 && !canal.PermitePreco) return BadRequest(new { mensagem = "A loja informada não aceita registros de preço." });
 
         _contexto.RegistrosPrecos.Add(new RegistroPreco { ItemListaDesejos = desejo, Canal = canal, PrecoAtual = request.PrecoAtual, PrecoCheio = request.PrecoCheio ?? request.PrecoAtual, Disponivel = request.Disponivel, ConsultadoEm = DateTime.UtcNow });
         await _contexto.SaveChangesAsync();
