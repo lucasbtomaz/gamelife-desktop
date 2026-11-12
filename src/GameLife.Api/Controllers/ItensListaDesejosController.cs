@@ -71,7 +71,6 @@ public sealed class ItensListaDesejosController : ControllerBase
             canal ??= new Canal { Nome = nome, PermitePreco = true };
         }
         if (canal is null) return BadRequest(new { mensagem = "Informe uma loja válida." });
-        if (canal.Id > 0 && !canal.PermitePreco) return BadRequest(new { mensagem = "A loja informada não aceita registros de preço." });
 
         _contexto.RegistrosPrecos.Add(new RegistroPreco { ItemListaDesejos = desejo, Canal = canal, PrecoAtual = request.PrecoAtual, PrecoCheio = request.PrecoCheio ?? request.PrecoAtual, Disponivel = request.Disponivel, ConsultadoEm = DateTime.UtcNow });
         await _contexto.SaveChangesAsync();

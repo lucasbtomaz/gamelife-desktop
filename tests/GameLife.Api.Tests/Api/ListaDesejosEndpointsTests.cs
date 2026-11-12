@@ -1,13 +1,22 @@
 using System.Net;
 using System.Net.Http.Json;
+using gamelife_api.Context;
+using gamelife_api.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace gamelife_api.Tests.Api;
 
 public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactory>
 {
+    private readonly GameLifeApiFactory _factory;
     private readonly HttpClient _client;
 
-    public ListaDesejosEndpointsTests(GameLifeApiFactory factory) => _client = factory.CreateClient();
+    public ListaDesejosEndpointsTests(GameLifeApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
 
     [Fact]
     public async Task CriarDesejoReutilizaJogoDaBibliotecaESinalizaPosse()
@@ -91,6 +100,60 @@ public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactor
 
         var itens = await _client.GetFromJsonAsync<DesejoResponse[]>("/api/lista-desejos");
         Assert.Equal(50m, Assert.Single(itens!, x => x.Id == desejo.Id).MenorPrecoAtual);
+    }
+
+    [Fact]
+    public async Task AdicionarPrecoAceitaCanalExistenteSemPermissaoGlobalDePreco()
+    {
+        var titulo = $"Jogo Xbox {Guid.NewGuid()}";
+        var nomeCanal = $"Xbox One {Guid.NewGuid()}";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var contexto = scope.ServiceProvider.GetRequiredService<GameLifeDbContext>();
+            contexto.Canais.Add(new Canal { Nome = nomeCanal, PermitePreco = false });
+            await contexto.SaveChangesAsync();
+        }
+
+        var criada = await _client.PostAsJsonAsync("/api/lista-desejos", new { titulo });
+        var desejo = await criada.Content.ReadFromJsonAsync<DesejoResponse>();
+        var resposta = await _client.PostAsJsonAsync($"/api/lista-desejos/{desejo!.Id}/precos", new
+        {
+            nomeCanal,
+            precoAtual = 149.90m,
+            disponivel = true
+        });
+
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
+        var item = await resposta.Content.ReadFromJsonAsync<DesejoResponse>();
+        Assert.Equal(nomeCanal, Assert.Single(item!.PrecosAtuais).CanalNome);
+
+        using var verificacao = _factory.Services.CreateScope();
+        var contextoVerificacao = verificacao.ServiceProvider.GetRequiredService<GameLifeDbContext>();
+        Assert.False(await contextoVerificacao.Canais
+            .Where(canal => canal.Nome == nomeCanal)
+            .Select(canal => canal.PermitePreco)
+            .SingleAsync());
+    }
+
+    [Fact]
+    public async Task AdicionarPrecoCriaPlataformaXboxInexistente()
+    {
+        var titulo = $"Jogo Series S {Guid.NewGuid()}";
+        var nomeCanal = $"Xbox Series S {Guid.NewGuid()}";
+        var criada = await _client.PostAsJsonAsync("/api/lista-desejos", new { titulo });
+        var desejo = await criada.Content.ReadFromJsonAsync<DesejoResponse>();
+
+        var resposta = await _client.PostAsJsonAsync($"/api/lista-desejos/{desejo!.Id}/precos", new
+        {
+            nomeCanal,
+            precoAtual = 89.90m,
+            disponivel = true
+        });
+
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
+        var item = await resposta.Content.ReadFromJsonAsync<DesejoResponse>();
+        Assert.Equal(nomeCanal, Assert.Single(item!.PrecosAtuais).CanalNome);
     }
 
     private sealed record BibliotecaItem(string Titulo);
