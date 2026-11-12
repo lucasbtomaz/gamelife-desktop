@@ -2928,6 +2928,13 @@ button:disabled {
   font-size: 10px;
 }
 
+.retrospectiva-ranking-controls {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 9px;
+}
+
 .retrospectiva-ranking-list {
   display: grid;
   gap: 10px;
@@ -3065,7 +3072,13 @@ button:disabled {
   }
 
   .retrospectiva-achievements {
-    display: none;
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .retrospectiva-time {
+    grid-column: 4;
+    grid-row: 1 / span 2;
   }
 }
 
@@ -3090,8 +3103,23 @@ button:disabled {
     grid-template-columns: 36px 36px minmax(0, 1fr);
   }
 
+  .retrospectiva-ranking-controls {
+    align-items: flex-start;
+  }
+
+  .retrospectiva-position,
+  .retrospectiva-game-icon {
+    grid-row: 1 / span 3;
+  }
+
+  .retrospectiva-achievements {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
   .retrospectiva-time {
     grid-column: 3;
+    grid-row: 3;
     text-align: left;
   }
 }

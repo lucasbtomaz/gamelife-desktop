@@ -59,6 +59,7 @@ export default function PainelRetrospectiva() {
   const [ano, setAno] = useState(periodoAtual.ano);
   const [mes, setMes] = useState(periodoAtual.mes);
   const [modo, setModo] = useState('mensal');
+  const [filtroLista, setFiltroLista] = useState('todos');
   const [copiado, setCopiado] = useState(false);
 
   // Estados e referência para html2canvas (Spotify Wrapped share card)
@@ -92,7 +93,7 @@ export default function PainelRetrospectiva() {
     const totalConquistas = itensParaUso.reduce((acc, curr) => acc + (Number(curr.conquistasObtidas) || 0), 0);
 
     const zerados = itensParaUso.filter(item => item.status === 'Zerado');
-    const jogando = itensParaUso.filter(item => item.status !== 'Zerado');
+    const jogando = itensParaUso.filter(item => item.status === 'NaoTerminado');
 
     // Jogos ordenados por tempo (Top games)
     const maisJogados = [...itensParaUso].sort((a, b) => (Number(b.tempoEmHoras) || 0) - (Number(a.tempoEmHoras) || 0));
@@ -146,6 +147,8 @@ export default function PainelRetrospectiva() {
   }, [itens, ano, mes]);
 
   const copiarResumo = () => {
+    if (carregando || erro || estatisticas.itensParaUso.length === 0) return;
+
     const rotuloPeriodo = mes ? `${MESES.find(m => m.num === mes)?.nome}/${ano}` : `Retrospectiva Anual ${ano}`;
     const texto = `🎮✨ MINHA RETROSPECTIVA GAMELIFE (${rotuloPeriodo}) ✨🎮
 ━━━━━━━━━━━━━━━━━━━━
@@ -169,7 +172,12 @@ Acompanhado via GameLife Desktop 🕹️`;
 
   // Função para baixar cartão de compartilhamento Spotify Wrapped usando html2canvas
   const baixarCartaoImagem = async () => {
-    if (modo !== 'wrapped') {
+    const temDadosAnuais = itens.some(item => extrairPeriodoData(item.dataStatus)?.ano === periodoAtual.ano);
+    if (carregando || erro || gerandoImagem || !temDadosAnuais) return;
+
+    if (modo !== 'wrapped' || ano !== periodoAtual.ano || mes !== null) {
+      setAno(periodoAtual.ano);
+      setMes(null);
       setModo('wrapped');
       await new Promise(r => setTimeout(r, 300));
     }
@@ -208,6 +216,13 @@ Acompanhado via GameLife Desktop 🕹️`;
   const periodoSelecionado = mes
     ? `${MESES.find(item => item.num === mes)?.nome}/${ano}`
     : `Retrospectiva Anual ${ano}`;
+  const temDadosPeriodo = estatisticas.itensParaUso.length > 0;
+  const temDadosAnuais = itens.some(item => extrairPeriodoData(item.dataStatus)?.ano === periodoAtual.ano);
+  const listaFiltrada = estatisticas.maisJogados.filter(item => {
+    if (filtroLista === 'zerados') return item.status === 'Zerado';
+    if (filtroLista === 'jogando') return item.status === 'NaoTerminado';
+    return true;
+  });
 
   return (
     <main id="retrospectiva" className="retrospectiva-container">
@@ -222,7 +237,7 @@ Acompanhado via GameLife Desktop 🕹️`;
           <button
             type="button"
             onClick={baixarCartaoImagem}
-            disabled={gerandoImagem}
+            disabled={gerandoImagem || carregando || Boolean(erro) || !temDadosAnuais}
             className="btn-wrapped-share btn-wrapped-download"
             title="Baixar imagem em PNG da retrospectiva anual"
           >
@@ -233,6 +248,7 @@ Acompanhado via GameLife Desktop 🕹️`;
           <button
             type="button"
             onClick={copiarResumo}
+            disabled={carregando || Boolean(erro) || !temDadosPeriodo}
             className="btn-wrapped-share"
             title="Copiar resumo em texto"
           >
@@ -344,7 +360,7 @@ Acompanhado via GameLife Desktop 🕹️`;
                 <article className="retrospectiva-metric metric-emerald">
                   <span>Top 1 do período</span>
                   <strong>{estatisticas.maisJogados[0]?.titulo}</strong>
-                  <small>{estatisticas.maisJogados[0]?.tempoEmHoras || 0} horas · {estatisticas.plataformaFavorita}</small>
+                  <small>{estatisticas.maisJogados[0]?.tempoEmHoras || 0} horas · {estatisticas.maisJogados[0]?.plataforma || 'Plataforma não informada'}</small>
                 </article>
               </div>
 
@@ -358,11 +374,36 @@ Acompanhado via GameLife Desktop 🕹️`;
                     <h2>🏆 Jogos mais jogados no período</h2>
                     <p>Ranking dos jogos em que você mais investiu tempo em {periodoSelecionado}.</p>
                   </div>
-                  <span className="retrospectiva-total">Total: {estatisticas.itensParaUso.length} jogos</span>
+                  <div className="retrospectiva-ranking-controls">
+                    <span className="retrospectiva-total">Total: {estatisticas.itensParaUso.length} jogos</span>
+                    <div className="category-tabs" aria-label="Filtrar ranking por status">
+                      <button
+                        type="button"
+                        className={`tab-filter ${filtroLista === 'todos' ? 'active' : ''}`}
+                        onClick={() => setFiltroLista('todos')}
+                      >
+                        Todos ({estatisticas.itensParaUso.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`tab-filter ${filtroLista === 'zerados' ? 'active' : ''}`}
+                        onClick={() => setFiltroLista('zerados')}
+                      >
+                        Zerados ({estatisticas.zerados.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`tab-filter ${filtroLista === 'jogando' ? 'active' : ''}`}
+                        onClick={() => setFiltroLista('jogando')}
+                      >
+                        Em andamento ({estatisticas.jogando.length})
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="retrospectiva-ranking-list">
-                  {estatisticas.maisJogados.map((item, indice) => {
+                  {listaFiltrada.map((item, indice) => {
                     const percentualTempo = estatisticas.tempoTotalHoras > 0
                       ? limitarPercentual(((Number(item.tempoEmHoras) || 0) / estatisticas.tempoTotalHoras) * 100)
                       : 0;
@@ -445,7 +486,7 @@ Acompanhado via GameLife Desktop 🕹️`;
               <h2>🏁 Último Jogo do Ano</h2>
               <div className="wrapped-game-highlight">
                 <strong>{estatisticas.ultimoJogo?.titulo || 'Último Jogo'}</strong>
-                <p>Status: {estatisticas.ultimoJogo?.status === 'Zerado' ? 'Zerado com glória' : 'Em andamento'}</p>
+                <p>Status: {rotuloStatus(estatisticas.ultimoJogo?.status)}</p>
               </div>
             </div>
           </div>
@@ -476,14 +517,19 @@ Acompanhado via GameLife Desktop 🕹️`;
               <button
                 type="button"
                 onClick={baixarCartaoImagem}
-                disabled={gerandoImagem}
+                disabled={gerandoImagem || carregando || Boolean(erro) || !temDadosAnuais}
                 className="btn-wrapped-share btn-wrapped-download"
               >
                 <Icon><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></Icon>
                 {gerandoImagem ? 'Gerando Imagem...' : 'Baixar Cartão de Compartilhamento (PNG)'}
               </button>
 
-              <button type="button" onClick={copiarResumo} className="btn-wrapped-share">
+              <button
+                type="button"
+                onClick={copiarResumo}
+                className="btn-wrapped-share"
+                disabled={carregando || Boolean(erro) || !temDadosPeriodo}
+              >
                 {copiado ? 'Texto Copiado!' : 'Copiar Resumo da Retrospectiva'}
               </button>
             </div>
@@ -590,7 +636,7 @@ Acompanhado via GameLife Desktop 🕹️`;
               <button
                 type="button"
                 onClick={baixarCartaoImagem}
-                disabled={gerandoImagem}
+                disabled={gerandoImagem || carregando || Boolean(erro) || !temDadosAnuais}
                 className="btn-wrapped-share btn-wrapped-download"
               >
                 <Icon><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></Icon>
