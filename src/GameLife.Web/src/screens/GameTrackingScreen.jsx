@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createGameTracking, deleteGameTracking, listGameTrackings, updateGameTracking } from '../api/gameTracking.js';
+import { formatarPercentual, limitarPercentual } from '../utils/percentual.js';
 
 const platforms = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'AMAZON PRIME', 'BLIZZARD', 'EA', 'NINTENDO', 'PSN', 'UBISOFT', 'XBOX', 'PLAY STORE', 'Outra'];
 const emptyForm = { titulo: '', plataforma: '', status: 'NaoTerminado', dataStatus: '', tempoEmHoras: '', conquistasPossiveis: '', conquistasObtidas: '', adicionarBiblioteca: false };
@@ -9,6 +10,13 @@ function dateLabel(status) {
   if (status === 'Zerado') return 'Data da conclusão';
   if (status === 'Dropado') return 'Data do abandono';
   return 'Data de atualização';
+}
+
+function statusDate(item) {
+  const status = statusLabels[item.status];
+  if (!item.dataStatus || item.status === 'NaoTerminado') return status;
+  const data = new Date(item.dataStatus).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  return `${status} em ${data}`;
 }
 
 function toPayload(form) {
@@ -127,15 +135,17 @@ export default function GameTrackingScreen() {
         </form>
       </div>
       <section className="tracking-list" aria-label="Jogos acompanhados">
-        {loading ? <div className="panel-card">Carregando...</div> : items.length === 0 ? <div className="panel-card tracking-empty"><h2>Nenhum jogo acompanhado</h2><p>Cadastre um jogo para começar a registrar seu progresso.</p></div> : groupedItems.map((group) => <article className="tracking-card tracking-game-card" key={group.key}>
+        {loading ? <div className="panel-card">Carregando...</div> : items.length === 0 ? <div className="panel-card tracking-empty"><h2>Nenhum jogo acompanhado</h2><p>Cadastre um jogo para começar a registrar seu progresso.</p></div> : groupedItems.map((group) => <article className="tracking-card tracking-game-card" aria-label={group.titulo} key={group.key}>
           <header className="tracking-game-head">
+            <span className="tracking-game-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 7h10l3 8a2 2 0 0 1-3.5 1.8L14 14h-4l-2.5 2.8A2 2 0 0 1 4 15z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg>
+            </span>
             <div><h2>{group.titulo}</h2><p>{group.entries.length} {group.entries.length === 1 ? 'plataforma acompanhada' : 'plataformas acompanhadas'}</p></div>
           </header>
           <div className="tracking-platform-list">
             {group.entries.map((item) => <section className="tracking-platform-entry" role="group" aria-label={item.plataforma} key={item.id}>
               <div className="tracking-card-head">
                 <div>
-                  <span className={`status-badge status-${item.status}`}>{statusLabels[item.status]}</span>
                   <strong className="tracking-platform-name">{item.plataforma}</strong>
                   {item.estaNaBiblioteca && <small>Na Biblioteca</small>}
                 </div>
@@ -144,8 +154,9 @@ export default function GameTrackingScreen() {
                   <button type="button" className="danger-link" aria-label={`Excluir ${item.titulo} em ${item.plataforma}`} onClick={() => remove(item)}>Excluir</button>
                 </div>
               </div>
-              <div className="tracking-details"><span><small>Tempo</small><strong>{item.tempoEmHoras ?? 0} h</strong></span><span><small>Conquistas</small><strong>{item.conquistasObtidas ?? 0}/{item.conquistasPossiveis ?? 0}</strong></span><span><small>Data</small><strong>{item.dataStatus ? new Date(item.dataStatus).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não informada'}</strong></span></div>
-              <div className="achievement-progress"><div><span>Progresso das conquistas</span><strong>{item.percentualConquistas}%</strong></div><span className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, item.percentualConquistas))}%` }} /></span></div>
+              <span className={`status-badge status-${item.status}`}>{statusDate(item)}</span>
+              <div className="tracking-details"><span><small>Horas jogadas</small><strong>{item.tempoEmHoras ?? 0}h</strong></span><span><small>Conquistas</small><strong>{item.conquistasObtidas ?? 0} / {item.conquistasPossiveis ?? 0}</strong></span></div>
+              <div className="achievement-progress"><div><span>Progresso das conquistas</span><strong>{formatarPercentual(item.percentualConquistas)}</strong></div><span className="progress-track"><span style={{ width: `${limitarPercentual(item.percentualConquistas)}%` }} /></span></div>
             </section>)}
           </div>
         </article>)}

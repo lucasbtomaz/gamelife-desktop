@@ -1404,7 +1404,9 @@ button:disabled {
 
 .tracking-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+  align-items: start;
 }
 
 .tracking-card {
@@ -1416,8 +1418,28 @@ button:disabled {
 }
 
 .tracking-game-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line-strong);
+}
+
+.tracking-game-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.tracking-game-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .tracking-game-head h2 {
@@ -1427,6 +1449,7 @@ button:disabled {
 }
 
 .tracking-game-head p {
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
 }
@@ -1455,6 +1478,7 @@ button:disabled {
 
 .tracking-card-head {
   justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .tracking-platform-name {
@@ -1469,6 +1493,7 @@ button:disabled {
 
 .status-badge {
   display: inline-block;
+  margin-bottom: 14px;
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 11px;
@@ -1495,7 +1520,7 @@ button:disabled {
 
 .tracking-details {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin: 18px 0;
 }
@@ -1513,9 +1538,23 @@ button:disabled {
 }
 
 .tracking-details strong {
+  display: block;
   margin-top: 4px;
   font-size: 13px;
   color: #fff;
+}
+
+.achievement-progress > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #aab6ca;
+  font-size: 11px;
+}
+
+.achievement-progress strong {
+  color: #fbbf24;
+  font-family: monospace;
 }
 
 .progress-track {
@@ -1618,6 +1657,12 @@ button:disabled {
   .deal-badges {
     justify-content: flex-start;
   }
+  .tracking-layout {
+    grid-template-columns: 1fr;
+  }
+  .tracking-form {
+    position: static;
+  }
 }
 
 @media (max-width: 850px) {
@@ -1644,6 +1689,9 @@ button:disabled {
   }
   .wishlist-form, .tracking-form {
     position: static;
+  }
+  .tracking-list {
+    grid-template-columns: 1fr;
   }
 }
 
