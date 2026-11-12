@@ -6,7 +6,7 @@ Tornar uma Lista de Desejos com dezenas de jogos rápida de consultar e permitir
 
 ## Comportamento
 
-- O cadastro de cotação aceitará qualquer canal informado. Se o canal já existir com `PermitePreco = false`, ele será habilitado para preços sem alterar sua capacidade de registrar posse.
+- O cadastro de cotação aceitará qualquer canal informado. Se o canal já existir com `PermitePreco = false`, ele será aceito neste fluxo sem alterar suas permissões globais.
 - A tela continuará sugerindo canais conhecidos, mas não limitará o texto às sugestões.
 - Uma busca no topo filtrará imediatamente os cartões por título do jogo e pelos nomes das lojas/plataformas presentes nas cotações e no histórico.
 - A busca ignorará maiúsculas, minúsculas e acentos. Sem resultados, a tela mostrará um estado vazio específico sem esconder o formulário de cadastro.
