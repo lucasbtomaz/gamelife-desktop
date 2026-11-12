@@ -29,7 +29,7 @@
 
 ---
 
-### Tarefa 0: Registrar a linha de base do SQLite
+### Task 0: Registrar a linha de base do SQLite
 
 **Arquivos:**
 - Ler: `data/gamelife.db`
@@ -48,7 +48,7 @@ Esperado: “Snapshot seguro do banco criado.”, sem alteração no SQLite.
 Executar: `git status --short -- data/gamelife.db "$env:TEMP\gamelife-ui-before.json"`
 Esperado: nenhuma entrada para `data/gamelife.db`.
 
-### Tarefa 1: Percentuais compartilhados e painel de progresso do Início
+### Task 1: Percentuais compartilhados e painel de progresso do Início
 
 **Arquivos:**
 - Criar: `src/GameLife.Web/src/utils/percentual.js`
@@ -102,7 +102,7 @@ Executar: `npm.cmd test -- --run src/utils/percentual.test.js src/components/Hom
 
 Commit: `feat: adicione progresso seguro ao início`
 
-### Tarefa 2: Lista de Desejos sem preço alvo e com oportunidades por loja
+### Task 2: Lista de Desejos sem preço alvo e com oportunidades por loja
 
 **Arquivos:**
 - Modificar: `src/GameLife.Web/src/screens/WishlistScreen.jsx`
@@ -154,7 +154,7 @@ Executar: `dotnet test tests/GameLife.Api.Tests/GameLife.Api.Tests.csproj --filt
 
 Commit: `feat: destaque oportunidades na lista de desejos`
 
-### Tarefa 3: Fichas renovadas em Jogos Concluídos
+### Task 3: Fichas renovadas em Jogos Concluídos
 
 **Arquivos:**
 - Modificar: `src/GameLife.Web/src/screens/GameTrackingScreen.jsx`
@@ -194,7 +194,7 @@ Executar: `npm.cmd test -- --run src/screens/GameTrackingScreen.test.jsx`
 
 Commit: `feat: renove as fichas de jogos concluídos`
 
-### Tarefa 4: Retrospectiva dinâmica baseada apenas nos dados reais
+### Task 4: Retrospectiva dinâmica baseada apenas nos dados reais
 
 **Arquivos:**
 - Modificar: `src/GameLife.Web/src/components/PainelRetrospectiva.jsx`
@@ -246,7 +246,7 @@ Executar: `npm.cmd test -- --run src/components/PainelRetrospectiva.test.jsx`
 
 Commit: `feat: torne a retrospectiva dinâmica e real`
 
-### Tarefa 5: Verificação integrada e segurança do banco local
+### Task 5: Verificação integrada e segurança do banco local
 
 **Arquivos:**
 - Revisar: todos os arquivos modificados nas Tarefas 1 a 4.
