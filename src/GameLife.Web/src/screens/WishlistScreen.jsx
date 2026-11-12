@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { adicionarPreco, atualizarDesejo, criarDesejo, excluirDesejo, listarCanais, listarDesejos } from '../api/wishlist.js';
+import { filtrarDesejos, formatarOrigens, obterOrigensMenores } from '../utils/wishlist.js';
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const valor = (numero) => numero == null ? 'Sem preço' : moeda.format(numero);
@@ -55,9 +56,10 @@ export default function WishlistScreen() {
   const [edicoes, setEdicoes] = useState({});
   const [canais, setCanais] = useState([]);
   const [abertos, setAbertos] = useState({});
+  const [busca, setBusca] = useState('');
 
   useEffect(() => { listarDesejos().then(setItens).catch(() => setErro('Não foi possível carregar a Lista de Desejos.')).finally(() => setCarregando(false)); }, []);
-  useEffect(() => { listarCanais().then((lista) => setCanais(lista.filter((canal) => canal.permitePreco))).catch(() => {}); }, []);
+  useEffect(() => { listarCanais().then(setCanais).catch(() => {}); }, []);
 
   const adicionar = async (evento) => {
     evento.preventDefault(); setErro('');
@@ -94,9 +96,9 @@ export default function WishlistScreen() {
   };
 
   const possuidos = itens.filter((item) => item.jaTenho).length;
-  const menor = itens.map((item) => item.menorPrecoAtual).filter((preco) => preco != null).sort((a, b) => a - b)[0];
+  const itensFiltrados = useMemo(() => filtrarDesejos(itens, busca), [itens, busca]);
   return <main id="lista-desejos">
-    <header className="page-header"><div><span className="eyebrow">BACKLOG DE JOGOS</span><h1>Lista de Desejos</h1><p>Registre por que quer jogar e acompanhe manualmente os preços.</p></div><div className="wishlist-summary"><span><strong>{itens.length}</strong> desejos</span><span><strong>{possuidos}</strong> já tenho</span><span><strong>{valor(menor)}</strong> melhor preço</span></div></header>
+    <header className="page-header"><div><span className="eyebrow">BACKLOG DE JOGOS</span><h1>Lista de Desejos</h1><p>Registre por que quer jogar e acompanhe manualmente os preços.</p></div><div className="wishlist-summary"><span><strong>{itens.length}</strong> desejos</span><span><strong>{possuidos}</strong> já tenho</span></div></header>
     {erro && <div className="feedback erro page-feedback" role="alert">{erro}</div>}
     <section className="wishlist-layout">
       <form className="form-card wishlist-form" onSubmit={adicionar}>
@@ -106,8 +108,13 @@ export default function WishlistScreen() {
         <button type="submit">Adicionar desejo</button>
       </form>
       <section className="wishlist-cards">
-        {carregando ? <div className="panel-card">Carregando desejos...</div> : itens.length === 0 ? <div className="panel-card wishlist-empty"><h2>Nenhum jogo na lista</h2><p>Adicione o primeiro jogo usando o formulário.</p></div> : itens.map((item) => {
+        {!carregando && itens.length > 0 && <div className="wishlist-search">
+          <label htmlFor="busca-desejos">Buscar por jogo ou loja</label>
+          <div><input id="busca-desejos" type="search" placeholder="Digite o nome do jogo ou da loja" value={busca} onChange={(evento) => setBusca(evento.target.value)} /><span>{itensFiltrados.length} de {itens.length}</span></div>
+        </div>}
+        {carregando ? <div className="panel-card">Carregando desejos...</div> : itens.length === 0 ? <div className="panel-card wishlist-empty"><h2>Nenhum jogo na lista</h2><p>Adicione o primeiro jogo usando o formulário.</p></div> : itensFiltrados.length === 0 ? <div className="panel-card wishlist-empty"><h2>Nenhum desejo encontrado</h2><p>Tente buscar por outro jogo ou loja.</p></div> : itensFiltrados.map((item) => {
           const cotacao = precos[item.id] || {};
+          const origens = obterOrigensMenores(item);
           return <article className="wishlist-card" key={item.id}>
             <div className="wishlist-card-head"><div><h2>{item.titulo}</h2>{item.jaTenho && <span className="owned-badge">Já tenho</span>}</div><button className="danger-link" type="button" onClick={() => remover(item)}>Excluir</button></div>
             {item.observacao && <p className="wishlist-note">{item.observacao}</p>}
@@ -115,7 +122,7 @@ export default function WishlistScreen() {
               <input aria-label={`Editar observação de ${item.titulo}`} placeholder="Por que ou quando jogar" value={edicoes[item.id]?.observacao ?? item.observacao ?? ''} onChange={(e) => setEdicoes({ ...edicoes, [item.id]: { observacao: e.target.value } })} />
               <button type="submit">Atualizar detalhes</button>
             </form>
-            <div className="price-stats"><span>Menor atual<strong>{valor(item.menorPrecoAtual)}</strong></span><span>Menor histórico<strong>{valor(item.menorPrecoHistorico)}</strong></span></div>
+            <div className="price-stats"><span>Menor atual<strong>{valor(item.menorPrecoAtual)}</strong>{origens.atual.length > 0 && <small className="price-origin" aria-label="Loja do menor atual" title={origens.atual.join(', ')}>{formatarOrigens(origens.atual)}</small>}</span><span>Menor histórico<strong>{valor(item.menorPrecoHistorico)}</strong>{origens.historico.length > 0 && <small className="price-origin" aria-label="Loja do menor histórico" title={origens.historico.join(', ')}>{formatarOrigens(origens.historico)}</small>}</span></div>
             <div className="store-prices">{item.precosAtuais?.length ? item.precosAtuais.map((preco) => {
               const desconto = calcularDesconto(preco);
               const sinalizacoes = classificarCotacao(preco);

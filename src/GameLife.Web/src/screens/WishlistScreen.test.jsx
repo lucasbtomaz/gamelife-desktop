@@ -113,3 +113,61 @@ test('agrupa todo o histórico por loja e ordena do mais recente para o mais ant
     '2026-09-01T10:00:00Z'
   ]);
 });
+
+test('remove o melhor preço global, mostra origens e sugere canais Xbox', async () => {
+  const item = {
+    id: 8,
+    titulo: 'Forza Horizon 5',
+    jaTenho: false,
+    menorPrecoAtual: 99,
+    menorPrecoHistorico: 59,
+    precosAtuais: [
+      { canalId: 1, canalNome: 'Xbox One', precoAtual: 99, disponivel: true },
+      { canalId: 2, canalNome: 'Xbox Series S', precoAtual: 99, disponivel: true }
+    ],
+    historicoPrecos: [
+      { id: 10, canalId: 1, canalNome: 'Xbox One', precoAtual: 59, disponivel: true, consultadoEm: '2026-09-01T10:00:00Z' }
+    ]
+  };
+  fetch.mockImplementation(async (url) => ({
+    ok: true,
+    json: async () => url === '/api/canais'
+      ? [{ id: 1, nome: 'Xbox One', permitePreco: false }]
+      : [item]
+  }));
+
+  render(<WishlistScreen />);
+
+  expect(await screen.findByRole('heading', { name: 'Forza Horizon 5' })).toBeInTheDocument();
+  expect(screen.queryByText(/melhor preço/i)).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Buscar por jogo ou loja')).toBeInTheDocument();
+  expect(screen.getByLabelText('Loja do menor atual')).toHaveTextContent('Xbox One +1');
+  expect(screen.getByLabelText('Loja do menor histórico')).toHaveTextContent('Xbox One');
+  expect(document.querySelector('#canais-preco option[value="Xbox One"]')).not.toBeNull();
+});
+
+test('filtra desejos por título e loja e informa quando não há resultado', async () => {
+  const itens = [
+    { id: 9, titulo: 'Pokémon Legends', precosAtuais: [], historicoPrecos: [] },
+    {
+      id: 10,
+      titulo: 'Celeste',
+      precosAtuais: [],
+      historicoPrecos: [{ id: 20, canalId: 3, canalNome: 'GOG', precoAtual: 20, disponivel: true, consultadoEm: '2026-09-01T10:00:00Z' }]
+    }
+  ];
+  fetch.mockImplementation(async (url) => ({ ok: true, json: async () => url === '/api/canais' ? [] : itens }));
+  render(<WishlistScreen />);
+
+  const busca = await screen.findByLabelText('Buscar por jogo ou loja');
+  fireEvent.change(busca, { target: { value: 'pokemon' } });
+  expect(screen.getByRole('heading', { name: 'Pokémon Legends' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Celeste' })).not.toBeInTheDocument();
+
+  fireEvent.change(busca, { target: { value: 'gog' } });
+  expect(screen.getByRole('heading', { name: 'Celeste' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Pokémon Legends' })).not.toBeInTheDocument();
+
+  fireEvent.change(busca, { target: { value: 'inexistente' } });
+  expect(screen.getByText('Nenhum desejo encontrado')).toBeInTheDocument();
+});
