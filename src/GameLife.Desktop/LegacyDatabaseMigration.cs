@@ -13,9 +13,11 @@ public static class LegacyDatabaseMigration
         CancellationToken cancellationToken = default)
     {
         await using var transaction = await destination.Database.BeginTransactionAsync(cancellationToken);
+
         var sourceChannels = await source.Canais.AsNoTracking().ToListAsync(cancellationToken);
         var destinationChannels = await destination.Canais.ToListAsync(cancellationToken);
         var channelMap = new Dictionary<int, Canal>();
+
         foreach (var sourceChannel in sourceChannels)
         {
             var channel = destinationChannels.FirstOrDefault(item =>
@@ -37,6 +39,7 @@ public static class LegacyDatabaseMigration
         var sourceGames = await source.Jogos.AsNoTracking().ToListAsync(cancellationToken);
         var destinationGames = await destination.Jogos.ToListAsync(cancellationToken);
         var gameMap = new Dictionary<int, Jogo>();
+
         foreach (var sourceGame in sourceGames)
         {
             var game = destinationGames.FirstOrDefault(item =>
@@ -53,11 +56,25 @@ public static class LegacyDatabaseMigration
             }
             gameMap[sourceGame.Id] = game;
         }
+
         await destination.SaveChangesAsync(cancellationToken);
 
+        var hasCompraDigital = await ColunaExisteAsync(source, "PossesJogos", "CompraDigital", cancellationToken);
+        var hasPorAssinatura = await ColunaExisteAsync(source, "PossesJogos", "PorAssinatura", cancellationToken);
         var destinationOwnerships = await destination.PossesJogos.ToListAsync(cancellationToken);
         var ownershipMap = new Dictionary<int, PosseJogo>();
-        foreach (var sourceOwnership in await source.PossesJogos.AsNoTracking().ToListAsync(cancellationToken))
+
+        var sourceOwnershipRows = hasCompraDigital && hasPorAssinatura
+            ? await source.PossesJogos.AsNoTracking()
+                .Select(item => new LegacyOwnershipRow(
+                    item.Id, item.JogoId, item.CanalId, item.MidiaFisica, item.CompraDigital, item.PorAssinatura, item.AdquiridoEm))
+                .ToListAsync(cancellationToken)
+            : await source.PossesJogos.AsNoTracking()
+                .Select(item => new LegacyOwnershipRow(
+                    item.Id, item.JogoId, item.CanalId, item.MidiaFisica, !item.MidiaFisica, false, item.AdquiridoEm))
+                .ToListAsync(cancellationToken);
+
+        foreach (var sourceOwnership in sourceOwnershipRows)
         {
             var game = gameMap[sourceOwnership.JogoId];
             var channel = channelMap[sourceOwnership.CanalId];
@@ -69,7 +86,9 @@ public static class LegacyDatabaseMigration
                 {
                     JogoId = game.Id,
                     CanalId = channel.Id,
+                    CompraDigital = sourceOwnership.CompraDigital,
                     MidiaFisica = sourceOwnership.MidiaFisica,
+                    PorAssinatura = sourceOwnership.PorAssinatura,
                     AdquiridoEm = sourceOwnership.AdquiridoEm
                 };
                 destination.PossesJogos.Add(ownership);
@@ -77,6 +96,7 @@ public static class LegacyDatabaseMigration
             }
             ownershipMap[sourceOwnership.Id] = ownership;
         }
+
         await destination.SaveChangesAsync(cancellationToken);
 
         var destinationRecords = await destination.RegistrosJogos.ToListAsync(cancellationToken);
@@ -84,10 +104,12 @@ public static class LegacyDatabaseMigration
         {
             if (!ownershipMap.TryGetValue(sourceRecord.PosseJogoId, out var ownership))
                 continue;
+
             var exists = destinationRecords.Any(item =>
                 item.PosseJogoId == ownership.Id &&
                 item.FinalizadoEm == sourceRecord.FinalizadoEm &&
                 item.TempoEmHoras == sourceRecord.TempoEmHoras);
+
             if (!exists)
             {
                 destination.RegistrosJogos.Add(new RegistroJogo
@@ -132,9 +154,44 @@ public static class LegacyDatabaseMigration
             }
         }
 
+        if (await TabelaExisteAsync(source, "AssinaturasJogos", cancellationToken))
+        {
+            var destinationSubscriptions = await destination.AssinaturasJogos.ToListAsync(cancellationToken);
+            foreach (var sourceSubscription in await source.AssinaturasJogos.AsNoTracking().ToListAsync(cancellationToken))
+            {
+                var game = gameMap[sourceSubscription.JogoId];
+                if (destinationSubscriptions.Any(item =>
+                    item.JogoId == game.Id &&
+                    item.Servico.Equals(sourceSubscription.Servico, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                var subscription = new AssinaturaJogo
+                {
+                    JogoId = game.Id,
+                    Servico = sourceSubscription.Servico,
+                    Situacao = sourceSubscription.Situacao,
+                    DataDisponibilidade = sourceSubscription.DataDisponibilidade,
+                    DataEncerramento = sourceSubscription.DataEncerramento
+                };
+                destination.AssinaturasJogos.Add(subscription);
+                destinationSubscriptions.Add(subscription);
+            }
+        }
+
         await destination.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
+
+    private sealed record LegacyOwnershipRow(
+        int Id,
+        int JogoId,
+        int CanalId,
+        bool MidiaFisica,
+        bool CompraDigital,
+        bool PorAssinatura,
+        DateTime? AdquiridoEm);
 
     private static async Task<bool> TabelaExisteAsync(
         GameLifeDbContext context,
@@ -153,6 +210,34 @@ public static class LegacyDatabaseMigration
             parameter.Value = tableName;
             command.Parameters.Add(parameter);
             return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken)) > 0;
+        }
+        finally
+        {
+            if (shouldClose) await connection.CloseAsync();
+        }
+    }
+
+    private static async Task<bool> ColunaExisteAsync(
+        GameLifeDbContext context,
+        string tableName,
+        string columnName,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose) await connection.OpenAsync(cancellationToken);
+        try
+        {
+            await using var command = connection.CreateCommand();
+            var quotedTable = tableName.Replace("\"", "\"\"");
+            command.CommandText = $"PRAGMA table_info(\"{quotedTable}\")";
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
         finally
         {
@@ -198,6 +283,7 @@ public static class LegacyDatabaseMigration
         destination.AddRange(precos);
         destination.AddRange(registros);
         await destination.SaveChangesAsync(cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
     }
 }

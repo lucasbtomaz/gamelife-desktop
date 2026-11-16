@@ -36,7 +36,9 @@ public sealed class BibliotecaService
                 posse.Jogo.AnoLancamento,
                 posse.CanalId,
                 posse.Canal.Nome,
+                posse.CompraDigital,
                 posse.MidiaFisica,
+                posse.PorAssinatura,
                 acompanhamento == null ? null : acompanhamento.Id,
                 acompanhamento == null
                     ? null
@@ -55,7 +57,18 @@ public sealed class BibliotecaService
         CancellationToken cancellationToken)
     {
         var rows = await CriarConsultaPlana(_contexto).ToListAsync(cancellationToken);
-        return Agrupar(rows);
+        var gameIds = rows.Select(item => item.JogoId).Distinct().ToArray();
+        var subscriptions = gameIds.Length == 0
+            ? []
+            : await _contexto.AssinaturasJogos.AsNoTracking()
+                .Where(item => gameIds.Contains(item.JogoId))
+                .OrderBy(item => item.Servico)
+                .ToListAsync(cancellationToken);
+        var subscriptionsByGame = subscriptions
+            .GroupBy(item => item.JogoId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<AssinaturaJogoResponse>)group.Select(ProjetarAssinatura).ToArray());
+
+        return Agrupar(rows, subscriptionsByGame);
     }
 
     public async Task<SalvarJogoBibliotecaResult> SalvarAsync(
@@ -63,6 +76,7 @@ public sealed class BibliotecaService
         CancellationToken cancellationToken)
     {
         Validar(request);
+
         await EscritaGate.WaitAsync(cancellationToken);
         IDbContextTransaction? transaction = null;
         var transactionCommitted = false;
@@ -76,6 +90,7 @@ public sealed class BibliotecaService
             var games = await _contexto.Jogos.ToListAsync(cancellationToken);
             var game = games.FirstOrDefault(item => NormalizarTitulo(item.Titulo) == titleKey);
             var created = game is null;
+
             if (game is null)
             {
                 game = new Jogo { Titulo = title, AnoLancamento = request.AnoLancamento };
@@ -87,6 +102,8 @@ public sealed class BibliotecaService
             }
 
             var channels = await _contexto.Canais.ToListAsync(cancellationToken);
+            var anyNewOwnership = false;
+
             foreach (var platformRequest in request.Plataformas)
             {
                 var platformName = platformRequest.Plataforma.Trim();
@@ -108,25 +125,33 @@ public sealed class BibliotecaService
                     channel.PermitePosse = true;
                 }
 
+                var (compraDigital, midiaFisica, porAssinatura) = ResolverFormasDeAcesso(platformRequest);
+
                 var ownership = game.Id == 0 || channel.Id == 0
                     ? null
                     : await _contexto.PossesJogos.FirstOrDefaultAsync(
                         item => item.JogoId == game.Id && item.CanalId == channel.Id,
                         cancellationToken);
+
                 if (ownership is null)
                 {
                     ownership = new PosseJogo
                     {
                         Jogo = game,
                         Canal = channel,
-                        MidiaFisica = platformRequest.MidiaFisica,
+                        CompraDigital = compraDigital,
+                        MidiaFisica = midiaFisica,
+                        PorAssinatura = porAssinatura,
                         AdquiridoEm = DateTime.UtcNow
                     };
                     _contexto.PossesJogos.Add(ownership);
+                    anyNewOwnership = true;
                 }
                 else
                 {
-                    ownership.MidiaFisica = platformRequest.MidiaFisica;
+                    ownership.CompraDigital = compraDigital;
+                    ownership.MidiaFisica = midiaFisica;
+                    ownership.PorAssinatura = porAssinatura;
                 }
 
                 if (platformRequest.Acompanhamento is not null)
@@ -136,6 +161,7 @@ public sealed class BibliotecaService
                         : await _contexto.AcompanhamentosJogos.FirstOrDefaultAsync(
                             item => item.JogoId == game.Id && item.CanalId == channel.Id,
                             cancellationToken);
+
                     if (tracking is null)
                     {
                         tracking = new AcompanhamentoJogo { Jogo = game, Canal = channel };
@@ -146,8 +172,56 @@ public sealed class BibliotecaService
                 }
             }
 
+            if (request.Assinaturas is not null)
+            {
+                var existingSubscriptions = game.Id == 0
+                    ? []
+                    : await _contexto.AssinaturasJogos
+                        .Where(item => item.JogoId == game.Id)
+                        .ToListAsync(cancellationToken);
+
+                foreach (var subscriptionRequest in request.Assinaturas)
+                {
+                    var servico = AssinaturaCatalogo.NormalizarServico(subscriptionRequest.Servico);
+                    var situacao = AssinaturaCatalogo.NormalizarSituacao(subscriptionRequest.Situacao);
+                    var existing = existingSubscriptions.FirstOrDefault(
+                        item => string.Equals(item.Servico, servico, StringComparison.OrdinalIgnoreCase));
+
+                    if (existing is null)
+                    {
+                        existing = new AssinaturaJogo
+                        {
+                            Jogo = game,
+                            Servico = servico,
+                            Situacao = situacao,
+                            DataDisponibilidade = subscriptionRequest.DataDisponibilidade,
+                            DataEncerramento = subscriptionRequest.DataEncerramento
+                        };
+                        _contexto.AssinaturasJogos.Add(existing);
+                        existingSubscriptions.Add(existing);
+                    }
+                    else
+                    {
+                        existing.Situacao = situacao;
+                        existing.DataDisponibilidade = subscriptionRequest.DataDisponibilidade;
+                        existing.DataEncerramento = subscriptionRequest.DataEncerramento;
+                    }
+                }
+            }
+
+            if (anyNewOwnership && game.Id > 0)
+            {
+                var wishlistItem = await _contexto.ItensListaDesejos
+                    .Include(item => item.RegistrosPrecos)
+                    .FirstOrDefaultAsync(item => item.JogoId == game.Id, cancellationToken);
+
+                if (wishlistItem is not null && wishlistItem.RegistrosPrecos.Count > 0)
+                    wishlistItem.AlertaBibliotecaSilenciado = false;
+            }
+
             await _contexto.SaveChangesAsync(cancellationToken);
             var response = await ObterJogoAsync(game.Id, cancellationToken);
+
             if (transaction is not null)
             {
                 await transaction.CommitAsync(cancellationToken);
@@ -169,6 +243,7 @@ public sealed class BibliotecaService
                     // A falha original é mais importante que uma falha ao desfazer a transação.
                 }
             }
+
             throw;
         }
         finally
@@ -184,11 +259,23 @@ public sealed class BibliotecaService
         CancellationToken cancellationToken)
     {
         var rows = await CriarConsultaPlana(_contexto, gameId).ToListAsync(cancellationToken);
-        return Agrupar(rows).Single();
+        var subscriptions = await _contexto.AssinaturasJogos.AsNoTracking()
+            .Where(item => item.JogoId == gameId)
+            .OrderBy(item => item.Servico)
+            .ToListAsync(cancellationToken);
+        var map = new Dictionary<int, IReadOnlyList<AssinaturaJogoResponse>>
+        {
+            [gameId] = subscriptions.Select(ProjetarAssinatura).ToArray()
+        };
+        return Agrupar(rows, map).Single();
     }
 
+    public static AssinaturaJogoResponse ProjetarAssinatura(AssinaturaJogo item) =>
+        new(item.Id, item.JogoId, item.Servico, item.Situacao, item.DataDisponibilidade, item.DataEncerramento);
+
     private static IReadOnlyList<JogoBibliotecaResponse> Agrupar(
-        IReadOnlyList<ItemBibliotecaPlataformaProjection> rows) =>
+        IReadOnlyList<ItemBibliotecaPlataformaProjection> rows,
+        IReadOnlyDictionary<int, IReadOnlyList<AssinaturaJogoResponse>> subscriptionsByGame) =>
         rows.GroupBy(item => new { item.JogoId, item.Titulo, item.AnoLancamento })
             .Select(group => new JogoBibliotecaResponse(
                 group.Key.JogoId,
@@ -198,7 +285,9 @@ public sealed class BibliotecaService
                     item.PosseId,
                     item.CanalId,
                     item.Plataforma,
+                    item.CompraDigital,
                     item.MidiaFisica,
+                    item.PorAssinatura,
                     item.AcompanhamentoId.HasValue
                         ? new AcompanhamentoBibliotecaResponse(
                             item.AcompanhamentoId.Value,
@@ -207,13 +296,32 @@ public sealed class BibliotecaService
                             item.TempoEmHoras,
                             item.ConquistasPossiveis,
                             item.ConquistasObtidas)
-                        : null)).ToArray()))
+                        : null)).ToArray(),
+                subscriptionsByGame.TryGetValue(group.Key.JogoId, out var subscriptions)
+                    ? subscriptions
+                    : []))
             .ToArray();
+
+    private static (bool CompraDigital, bool MidiaFisica, bool PorAssinatura) ResolverFormasDeAcesso(
+        SalvarPlataformaBibliotecaRequest request)
+    {
+        if (request.CompraDigital.HasValue || request.PorAssinatura.HasValue)
+        {
+            return (
+                request.CompraDigital ?? false,
+                request.MidiaFisica,
+                request.PorAssinatura ?? false);
+        }
+
+        // Compatibilidade com chamadas antigas que enviavam apenas MidiaFisica
+        return (!request.MidiaFisica, request.MidiaFisica, false);
+    }
 
     private static void Validar(SalvarJogoBibliotecaRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Titulo))
             throw new BibliotecaValidationException("Informe o nome do jogo.");
+
         if (request.Plataformas is null || request.Plataformas.Count == 0)
             throw new BibliotecaValidationException("Selecione pelo menos uma plataforma.");
 
@@ -222,6 +330,7 @@ public sealed class BibliotecaService
         {
             if (string.IsNullOrWhiteSpace(platform.Plataforma))
                 throw new BibliotecaValidationException("Informe o nome de todas as plataformas.");
+
             var key = NormalizarChave(platform.Plataforma);
             if (!platformKeys.Add(key))
             {
@@ -229,8 +338,48 @@ public sealed class BibliotecaService
                     $"A plataforma {platform.Plataforma.Trim()} foi informada mais de uma vez.");
             }
 
+            if (platform.CompraDigital.HasValue || platform.PorAssinatura.HasValue)
+            {
+                var (compraDigital, midiaFisica, porAssinatura) = ResolverFormasDeAcesso(platform);
+                if (!compraDigital && !midiaFisica && !porAssinatura)
+                {
+                    throw new BibliotecaValidationException(
+                        $"Selecione pelo menos uma forma de acesso para {platform.Plataforma.Trim()}.");
+                }
+            }
+
             if (platform.Acompanhamento is not null)
                 ValidarAcompanhamento(platform.Acompanhamento);
+        }
+
+        if (request.Assinaturas is not null)
+        {
+            var serviceKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var subscription in request.Assinaturas)
+            {
+                try
+                {
+                    var servico = AssinaturaCatalogo.NormalizarServico(subscription.Servico);
+                    AssinaturaCatalogo.NormalizarSituacao(subscription.Situacao);
+                    if (!serviceKeys.Add(servico))
+                    {
+                        throw new BibliotecaValidationException(
+                            $"A assinatura {servico} foi informada mais de uma vez para este jogo.");
+                    }
+
+                    if (subscription.DataDisponibilidade.HasValue &&
+                        subscription.DataEncerramento.HasValue &&
+                        subscription.DataEncerramento.Value.Date < subscription.DataDisponibilidade.Value.Date)
+                    {
+                        throw new BibliotecaValidationException(
+                            "A data de encerramento da assinatura não pode ser anterior à data de entrada.");
+                    }
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new BibliotecaValidationException(ex.Message);
+                }
+            }
         }
     }
 
@@ -243,10 +392,13 @@ public sealed class BibliotecaService
         {
             throw new BibliotecaValidationException("Informe um status válido.");
         }
+
         if (request.TempoEmHoras < 0 || request.ConquistasPossiveis < 0 || request.ConquistasObtidas < 0)
             throw new BibliotecaValidationException("Horas e conquistas não podem ser negativas.");
+
         if (request.ConquistasObtidas.HasValue && !request.ConquistasPossiveis.HasValue)
             throw new BibliotecaValidationException("Informe as conquistas possíveis.");
+
         if (request.ConquistasObtidas > request.ConquistasPossiveis)
             throw new BibliotecaValidationException("Conquistas obtidas não podem superar as possíveis.");
     }

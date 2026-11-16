@@ -61,6 +61,39 @@ namespace gamelife_api.Migrations
                     b.ToTable("AcompanhamentosJogos");
                 });
 
+            modelBuilder.Entity("gamelife_api.Models.AssinaturaJogo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DataDisponibilidade")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DataEncerramento")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("JogoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Servico")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<string>("Situacao")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JogoId", "Servico")
+                        .IsUnique();
+
+                    b.ToTable("AssinaturasJogos");
+                });
+
             modelBuilder.Entity("gamelife_api.Models.Canal", b =>
                 {
                     b.Property<int>("Id")
@@ -104,6 +137,17 @@ namespace gamelife_api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Colecoes");
+                });
+
+            modelBuilder.Entity("gamelife_api.Models.AssinaturaJogo", b =>
+                {
+                    b.HasOne("gamelife_api.Models.Jogo", "Jogo")
+                        .WithMany("Assinaturas")
+                        .HasForeignKey("JogoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Jogo");
                 });
 
             modelBuilder.Entity("gamelife_api.Models.ColecaoJogo", b =>
@@ -162,6 +206,9 @@ namespace gamelife_api.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    b.Property<bool>("AlertaBibliotecaSilenciado")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("datetime(6)");
@@ -260,10 +307,16 @@ namespace gamelife_api.Migrations
                     b.Property<int>("CanalId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("CompraDigital")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<int>("JogoId")
                         .HasColumnType("int");
 
                     b.Property<bool>("MidiaFisica")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("PorAssinatura")
                         .HasColumnType("tinyint(1)");
 
                     b.HasKey("Id");
@@ -488,6 +541,8 @@ namespace gamelife_api.Migrations
 
             modelBuilder.Entity("gamelife_api.Models.Jogo", b =>
                 {
+                    b.Navigation("Assinaturas");
+
                     b.Navigation("Colecoes");
 
                     b.Navigation("PossesJogos");

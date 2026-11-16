@@ -13,13 +13,14 @@ function preencherTitulo(titulo = 'Graveyard Keeper') {
   fireEvent.change(screen.getByLabelText('Nome do jogo'), { target: { value: titulo } });
 }
 
+afterEach(() => vi.restoreAllMocks());
+
 test('seleciona várias plataformas e envia uma única ficha', async () => {
   const onSubmit = renderForm();
   preencherTitulo();
   fireEvent.change(screen.getByLabelText('Ano de lançamento (opcional)'), { target: { value: '2018' } });
   fireEvent.click(screen.getByLabelText('Selecionar PC'));
   fireEvent.click(screen.getByLabelText('Selecionar STEAM'));
-
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
 
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
@@ -27,26 +28,26 @@ test('seleciona várias plataformas e envia uma única ficha', async () => {
     titulo: 'Graveyard Keeper',
     anoLancamento: 2018,
     plataformas: [
-      { plataforma: 'PC', midiaFisica: false },
-      { plataforma: 'STEAM', midiaFisica: false }
+      { plataforma: 'PC', compraDigital: true, midiaFisica: false, porAssinatura: false },
+      { plataforma: 'STEAM', compraDigital: true, midiaFisica: false, porAssinatura: false }
     ]
   });
 });
 
-test('permite mídia física diferente em cada plataforma', async () => {
+test('permite mídia física e compra digital diferentes em cada plataforma', async () => {
   const onSubmit = renderForm();
   preencherTitulo();
   fireEvent.click(screen.getByLabelText('Selecionar PC'));
   fireEvent.click(screen.getByLabelText('Selecionar Xbox Series X|S'));
+  fireEvent.click(screen.getByLabelText('Compra digital em Xbox Series X|S'));
   fireEvent.click(screen.getByLabelText('Mídia física em Xbox Series X|S'));
-
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
 
   await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({
     titulo: 'Graveyard Keeper',
     plataformas: [
-      { plataforma: 'PC', midiaFisica: false },
-      { plataforma: 'Xbox Series X|S', midiaFisica: true }
+      { plataforma: 'PC', compraDigital: true, midiaFisica: false, porAssinatura: false },
+      { plataforma: 'Xbox Series X|S', compraDigital: false, midiaFisica: true, porAssinatura: false }
     ]
   }));
 });
@@ -55,9 +56,7 @@ test('mantém acompanhamento completamente opcional', async () => {
   const onSubmit = renderForm();
   preencherTitulo('Celeste');
   fireEvent.click(screen.getByLabelText('Selecionar STEAM'));
-
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
-
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit.mock.calls[0][0].plataformas[0]).not.toHaveProperty('acompanhamento');
 });
@@ -72,17 +71,18 @@ test('envia status horas e conquistas somente na plataforma acompanhada', async 
   fireEvent.change(screen.getByLabelText('Horas jogadas em STEAM'), { target: { value: '24.5' } });
   fireEvent.change(screen.getByLabelText('Conquistas possíveis em STEAM'), { target: { value: '50' } });
   fireEvent.change(screen.getByLabelText('Conquistas obtidas em STEAM'), { target: { value: '42' } });
-
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
 
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   expect(onSubmit).toHaveBeenCalledWith({
     titulo: 'Hades',
     plataformas: [
-      { plataforma: 'PC', midiaFisica: false },
+      { plataforma: 'PC', compraDigital: true, midiaFisica: false, porAssinatura: false },
       {
         plataforma: 'STEAM',
+        compraDigital: true,
         midiaFisica: false,
+        porAssinatura: false,
         acompanhamento: {
           status: 'Zerado',
           tempoEmHoras: 24.5,
@@ -94,7 +94,7 @@ test('envia status horas e conquistas somente na plataforma acompanhada', async 
   });
 });
 
-test('bloqueia envio sem plataforma e conquistas inconsistentes', async () => {
+test('bloqueia envio sem plataforma, sem forma de acesso e conquistas inconsistentes', async () => {
   const onSubmit = renderForm();
   preencherTitulo();
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
@@ -102,11 +102,16 @@ test('bloqueia envio sem plataforma e conquistas inconsistentes', async () => {
   expect(onSubmit).not.toHaveBeenCalled();
 
   fireEvent.click(screen.getByLabelText('Selecionar PC'));
+  fireEvent.click(screen.getByLabelText('Compra digital em PC'));
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Selecione pelo menos uma forma de acesso para PC.');
+  expect(onSubmit).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByLabelText('Compra digital em PC'));
   fireEvent.click(screen.getByLabelText('Acompanhar progresso em PC'));
   fireEvent.change(screen.getByLabelText('Conquistas possíveis em PC'), { target: { value: '5' } });
   fireEvent.change(screen.getByLabelText('Conquistas obtidas em PC'), { target: { value: '6' } });
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
-
   expect(await screen.findByRole('alert')).toHaveTextContent('Conquistas obtidas não podem superar as possíveis.');
   expect(onSubmit).not.toHaveBeenCalled();
 });
@@ -122,11 +127,13 @@ test('preenche uma ficha existente e permite marcar outra plataforma', async () 
       titulo: 'Graveyard Keeper',
       anoLancamento: 2018,
       plataformas: [
-        { posseId: 1, nome: 'PC', midiaFisica: true, acompanhamento: null },
+        { posseId: 1, nome: 'PC', compraDigital: false, midiaFisica: true, porAssinatura: false, acompanhamento: null },
         {
           posseId: 2,
           nome: 'Steam',
+          compraDigital: true,
           midiaFisica: false,
+          porAssinatura: false,
           acompanhamento: {
             status: 'NaoTerminado',
             dataStatus: '2026-11-10T00:00:00',
@@ -135,7 +142,8 @@ test('preenche uma ficha existente e permite marcar outra plataforma', async () 
             conquistasObtidas: 5
           }
         }
-      ]
+      ],
+      assinaturas: []
     }}
   />);
 
@@ -154,10 +162,12 @@ test('preenche uma ficha existente e permite marcar outra plataforma', async () 
     titulo: 'Graveyard Keeper',
     anoLancamento: 2018,
     plataformas: [
-      { plataforma: 'PC', midiaFisica: true },
+      { plataforma: 'PC', compraDigital: false, midiaFisica: true, porAssinatura: false },
       {
         plataforma: 'STEAM',
+        compraDigital: true,
         midiaFisica: false,
+        porAssinatura: false,
         acompanhamento: {
           status: 'NaoTerminado',
           dataStatus: '2026-11-10',
@@ -166,7 +176,61 @@ test('preenche uma ficha existente e permite marcar outra plataforma', async () 
           conquistasObtidas: 5
         }
       },
-      { plataforma: 'Xbox Series X|S', midiaFisica: false }
+      { plataforma: 'Xbox Series X|S', compraDigital: true, midiaFisica: false, porAssinatura: false }
     ]
   }));
+});
+
+test('permite cadastrar jogo exclusivo por assinatura e também compra simultânea', async () => {
+  const onSubmit = renderForm();
+  preencherTitulo('Hi-Fi Rush');
+  fireEvent.click(screen.getByLabelText('Selecionar Xbox Series X|S'));
+  fireEvent.click(screen.getByLabelText('Compra digital em Xbox Series X|S'));
+  fireEvent.click(screen.getByLabelText('Assinatura em Xbox Series X|S'));
+
+  fireEvent.change(screen.getByLabelText('Serviço de assinatura'), { target: { value: 'Game Pass' } });
+  fireEvent.change(screen.getByLabelText('Situação da disponibilidade'), { target: { value: 'Disponível' } });
+  fireEvent.change(screen.getByLabelText('Data de entrada'), { target: { value: '2026-01-15' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmar assinatura' }));
+
+  // Também marca compra digital simultaneamente
+  fireEvent.click(screen.getByLabelText('Compra digital em Xbox Series X|S'));
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
+
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({
+    titulo: 'Hi-Fi Rush',
+    plataformas: [
+      { plataforma: 'Xbox Series X|S', compraDigital: true, midiaFisica: false, porAssinatura: true }
+    ],
+    assinaturas: [
+      {
+        servico: 'Game Pass',
+        situacao: 'Disponível',
+        dataDisponibilidade: '2026-01-15',
+        dataEncerramento: null
+      }
+    ]
+  }));
+});
+
+test('carrega assinatura compartilhada da Lista de Desejos ao informar o nome do jogo', async () => {
+  global.fetch = vi.fn().mockResolvedValueOnce({
+    ok: true,
+    json: async () => [{
+      id: 7,
+      jogoId: 90,
+      servico: 'Game Pass',
+      situacao: 'Disponível',
+      dataDisponibilidade: '2026-10-01T00:00:00',
+      dataEncerramento: null
+    }]
+  });
+
+  renderForm();
+  const input = screen.getByLabelText('Nome do jogo');
+  fireEvent.change(input, { target: { value: 'Persona 3 Reload' } });
+  fireEvent.blur(input);
+
+  expect(await screen.findByText('Game Pass · Disponível')).toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledWith('/api/assinaturas?titulo=Persona%203%20Reload');
 });

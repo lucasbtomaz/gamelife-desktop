@@ -1,4 +1,4 @@
-﻿using gamelife_api.Models;
+using gamelife_api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace gamelife_api.Context
@@ -7,8 +7,8 @@ namespace gamelife_api.Context
     {
         public GameLifeDbContext(DbContextOptions<GameLifeDbContext> options) : base(options)
         {
-
         }
+
         public DbSet<Jogo> Jogos { get; set; }
         public DbSet<Canal> Canais { get; set; }
         public DbSet<PosseJogo> PossesJogos { get; set; }
@@ -21,6 +21,7 @@ namespace gamelife_api.Context
         public DbSet<ColecaoJogo> ColecoesJogos { get; set; }
         public DbSet<Conquista> Conquistas { get; set; }
         public DbSet<AcompanhamentoJogo> AcompanhamentosJogos { get; set; }
+        public DbSet<AssinaturaJogo> AssinaturasJogos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -52,6 +53,16 @@ namespace gamelife_api.Context
             modelBuilder.Entity<PosseJogo>()
                 .HasIndex(item => new { item.JogoId, item.CanalId })
                 .IsUnique();
+
+            modelBuilder.Entity<AssinaturaJogo>()
+                .HasIndex(item => new { item.JogoId, item.Servico })
+                .IsUnique();
+
+            modelBuilder.Entity<AssinaturaJogo>()
+                .HasOne(item => item.Jogo)
+                .WithMany(jogo => jogo.Assinaturas)
+                .HasForeignKey(item => item.JogoId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<AcompanhamentoJogo>()
                 .HasOne(item => item.Jogo)

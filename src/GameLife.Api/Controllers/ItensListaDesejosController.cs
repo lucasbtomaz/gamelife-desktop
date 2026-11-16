@@ -1,6 +1,7 @@
 using gamelife_api.Context;
 using gamelife_api.Contracts;
 using gamelife_api.Models;
+using gamelife_api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace gamelife_api.Controllers;
 public sealed class ItensListaDesejosController : ControllerBase
 {
     private readonly GameLifeDbContext _contexto;
+
     public ItensListaDesejosController(GameLifeDbContext contexto) => _contexto = contexto;
 
     [HttpGet]
@@ -36,7 +38,6 @@ public sealed class ItensListaDesejosController : ControllerBase
         var jogo = await _contexto.Jogos.FirstOrDefaultAsync(item => item.Titulo.Trim().ToLower() == normalizado);
         if (jogo is not null && await _contexto.ItensListaDesejos.AnyAsync(item => item.JogoId == jogo.Id))
             return Conflict(new { mensagem = "Este jogo já está na lista de desejos." });
-
         jogo ??= new Jogo { Titulo = titulo };
         var desejo = new ItemListaDesejos { Jogo = jogo, PrecoDesejado = request.PrecoDesejado, Observacao = Limpar(request.Observacao), CriadoEm = DateTime.UtcNow };
         _contexto.ItensListaDesejos.Add(desejo);
@@ -72,10 +73,19 @@ public sealed class ItensListaDesejosController : ControllerBase
         }
         if (canal is null) return BadRequest(new { mensagem = "Informe uma loja válida." });
         if (canal.Id > 0 && !canal.PermitePreco) return BadRequest(new { mensagem = "A loja informada não aceita registros de preço." });
-
         _contexto.RegistrosPrecos.Add(new RegistroPreco { ItemListaDesejos = desejo, Canal = canal, PrecoAtual = request.PrecoAtual, PrecoCheio = request.PrecoCheio ?? request.PrecoAtual, Disponivel = request.Disponivel, ConsultadoEm = DateTime.UtcNow });
         await _contexto.SaveChangesAsync();
         return CreatedAtAction(nameof(ObterItemPorId), new { id }, Projetar(await CarregarItens().SingleAsync(item => item.Id == id)));
+    }
+
+    [HttpPost("{id:int}/continuar-monitorando")]
+    public async Task<IActionResult> ContinuarMonitorando(int id)
+    {
+        var item = await _contexto.ItensListaDesejos.FindAsync(id);
+        if (item is null) return NotFound(new { mensagem = $"Item com ID {id} não encontrado." });
+        item.AlertaBibliotecaSilenciado = true;
+        await _contexto.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpDelete("{id:int}")]
@@ -90,6 +100,7 @@ public sealed class ItensListaDesejosController : ControllerBase
 
     private IQueryable<ItemListaDesejos> CarregarItens() => _contexto.ItensListaDesejos.AsNoTracking()
         .Include(item => item.Jogo).ThenInclude(jogo => jogo.PossesJogos)
+        .Include(item => item.Jogo).ThenInclude(jogo => jogo.Assinaturas)
         .Include(item => item.RegistrosPrecos).ThenInclude(preco => preco.Canal);
 
     private static ItemListaDesejosResponse Projetar(ItemListaDesejos item)
@@ -100,7 +111,23 @@ public sealed class ItensListaDesejosController : ControllerBase
             .OrderBy(preco => preco.Canal.Nome)
             .Select(preco => new PrecoAtualDesejoResponse(preco.CanalId, preco.Canal.Nome, preco.PrecoAtual, preco.PrecoCheio, preco.Disponivel, preco.ConsultadoEm, historico.Where(valor => valor.CanalId == preco.CanalId && valor.Disponivel).Select(valor => (decimal?)valor.PrecoAtual).Min()))
             .ToArray();
-        return new ItemListaDesejosResponse(item.Id, item.JogoId, item.Jogo.Titulo, item.Jogo.PossesJogos.Count != 0, item.PrecoDesejado, item.Observacao, item.CriadoEm, atuais, atuais.Where(preco => preco.Disponivel).Select(preco => (decimal?)preco.PrecoAtual).Min(), historico.Where(preco => preco.Disponivel).Select(preco => (decimal?)preco.PrecoAtual).Min(), historico.Select(preco => new HistoricoPrecoDesejoResponse(preco.Id, preco.CanalId, preco.Canal.Nome, preco.PrecoAtual, preco.PrecoCheio, preco.Disponivel, preco.ConsultadoEm)).ToArray());
+        var assinaturas = item.Jogo.Assinaturas
+            .OrderBy(assinatura => assinatura.Servico)
+            .Select(BibliotecaService.ProjetarAssinatura)
+            .ToArray();
+        return new ItemListaDesejosResponse(
+            item.Id,
+            item.JogoId,
+            item.Jogo.Titulo,
+            item.Jogo.PossesJogos.Count != 0,
+            item.PrecoDesejado,
+            item.Observacao,
+            item.CriadoEm,
+            atuais,
+            atuais.Where(preco => preco.Disponivel).Select(preco => (decimal?)preco.PrecoAtual).Min(),
+            historico.Where(preco => preco.Disponivel).Select(preco => (decimal?)preco.PrecoAtual).Min(),
+            historico.Select(preco => new HistoricoPrecoDesejoResponse(preco.Id, preco.CanalId, preco.Canal.Nome, preco.PrecoAtual, preco.PrecoCheio, preco.Disponivel, preco.ConsultadoEm)).ToArray(),
+            assinaturas);
     }
 
     private static string? Limpar(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();

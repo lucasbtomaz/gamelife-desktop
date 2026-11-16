@@ -325,6 +325,49 @@ public sealed class LocalDatabaseTests : IDisposable
             item => item.Titulo == "Jogo de esquema antigo");
     }
 
+    [Fact]
+    public async Task MigraBancoAnteriorParaAssinaturasEFormasDeAcessoPreservandoTodosOsDados()
+    {
+        var path = Path.Combine(_directory, "data", "migracao-assinaturas.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await using (var antigo = NewContext(path))
+        {
+            await antigo.Database.EnsureCreatedAsync();
+            var jogoDigital = new Jogo { Titulo = "Jogo Digital Existente" };
+            var jogoFisico = new Jogo { Titulo = "Jogo Fisico Existente" };
+            var steam = new Canal { Nome = "STEAM", PermitePosse = true, PermitePreco = true };
+            var ps5 = new Canal { Nome = "PlayStation 5", PermitePosse = true, PermitePreco = false };
+            antigo.AddRange(jogoDigital, jogoFisico, steam, ps5);
+            antigo.PossesJogos.AddRange(
+                new PosseJogo { Jogo = jogoDigital, Canal = steam, MidiaFisica = false },
+                new PosseJogo { Jogo = jogoFisico, Canal = ps5, MidiaFisica = true });
+            antigo.ItensListaDesejos.Add(new ItemListaDesejos { Jogo = jogoDigital, PrecoDesejado = 50m });
+            await antigo.SaveChangesAsync();
+
+            // Simula banco pré-migração sem tabela AssinaturasJogos e sem as novas colunas
+            await antigo.Database.ExecuteSqlRawAsync("""
+                DROP TABLE IF EXISTS "AssinaturasJogos";
+                ALTER TABLE "PossesJogos" DROP COLUMN "CompraDigital";
+                ALTER TABLE "PossesJogos" DROP COLUMN "PorAssinatura";
+                ALTER TABLE "ItensListaDesejos" DROP COLUMN "AlertaBibliotecaSilenciado";
+                """);
+        }
+
+        await LocalDatabase.PrepararAsync(path, legacyMySqlConnectionString: null);
+
+        await using var atualizado = NewContext(path);
+        var posses = await atualizado.PossesJogos.Include(p => p.Jogo).OrderBy(p => p.Jogo.Titulo).ToListAsync();
+        Assert.Equal(2, posses.Count);
+        Assert.True(posses[0].CompraDigital);
+        Assert.False(posses[0].MidiaFisica);
+        Assert.False(posses[0].PorAssinatura);
+        Assert.False(posses[1].CompraDigital);
+        Assert.True(posses[1].MidiaFisica);
+        Assert.False(posses[1].PorAssinatura);
+        Assert.Equal(1, await atualizado.ItensListaDesejos.CountAsync());
+        Assert.Equal(0, await atualizado.AssinaturasJogos.CountAsync());
+    }
+
     private static GameLifeDbContext NewContext(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

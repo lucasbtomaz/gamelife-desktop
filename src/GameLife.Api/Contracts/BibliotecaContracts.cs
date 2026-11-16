@@ -5,12 +5,15 @@ namespace gamelife_api.Contracts;
 public sealed record SalvarJogoBibliotecaRequest(
     [Required, MaxLength(200)] string Titulo,
     [Range(1, 9999)] int? AnoLancamento,
-    [Required, MinLength(1)] IReadOnlyList<SalvarPlataformaBibliotecaRequest> Plataformas);
+    [Required, MinLength(1)] IReadOnlyList<SalvarPlataformaBibliotecaRequest> Plataformas,
+    IReadOnlyList<SalvarAssinaturaJogoRequest>? Assinaturas = null);
 
 public sealed record SalvarPlataformaBibliotecaRequest(
     [Required, MaxLength(100)] string Plataforma,
     bool MidiaFisica,
-    SalvarAcompanhamentoBibliotecaRequest? Acompanhamento);
+    SalvarAcompanhamentoBibliotecaRequest? Acompanhamento = null,
+    bool? CompraDigital = null,
+    bool? PorAssinatura = null);
 
 public sealed record SalvarAcompanhamentoBibliotecaRequest(
     string? Status,
@@ -23,13 +26,16 @@ public sealed record JogoBibliotecaResponse(
     int JogoId,
     string Titulo,
     int? AnoLancamento,
-    IReadOnlyList<PlataformaBibliotecaResponse> Plataformas);
+    IReadOnlyList<PlataformaBibliotecaResponse> Plataformas,
+    IReadOnlyList<AssinaturaJogoResponse> Assinaturas);
 
 public sealed record PlataformaBibliotecaResponse(
     int PosseId,
     int CanalId,
     string Nome,
+    bool CompraDigital,
     bool MidiaFisica,
+    bool PorAssinatura,
     AcompanhamentoBibliotecaResponse? Acompanhamento);
 
 public sealed record AcompanhamentoBibliotecaResponse(
@@ -47,7 +53,9 @@ public sealed record ItemBibliotecaPlataformaProjection(
     int? AnoLancamento,
     int CanalId,
     string Plataforma,
+    bool CompraDigital,
     bool MidiaFisica,
+    bool PorAssinatura,
     int? AcompanhamentoId,
     string? Status,
     DateTime? DataStatus,

@@ -7,6 +7,7 @@ import LibraryScreen from './screens/LibraryScreen.jsx';
 import LibraryProgressSummary from './components/LibraryProgressSummary.jsx';
 import PainelRetrospectiva from './components/PainelRetrospectiva.jsx';
 import LibraryGameScreen from './screens/LibraryGameScreen.jsx';
+import { continuarMonitorandoDesejo, excluirDesejo } from './api/wishlist.js';
 
 const plataformas = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'AMAZON PRIME', 'BLIZZARD', 'EA', 'NINTENDO', 'PSN', 'UBISOFT', 'XBOX', 'PLAY STORE', 'Outra'];
 
@@ -32,6 +33,7 @@ function App() {
   const [jogoEmEdicao, setJogoEmEdicao] = useState(null);
   const [modoBiblioteca, setModoBiblioteca] = useState(null);
   const [resumoProgresso, setResumoProgresso] = useState({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 });
+  const [processandoAlertaId, setProcessandoAlertaId] = useState(null);
   const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
 
   const carregarDashboard = async () => {
@@ -139,6 +141,38 @@ function App() {
     setMensagem(null);
   };
 
+  const removerDesejoDoAlerta = async (alerta) => {
+    setProcessandoAlertaId(alerta.desejoId);
+    setMensagem(null);
+    try {
+      await excluirDesejo(alerta.desejoId);
+      setDashboard((atual) => atual
+        ? { ...atual, alertasListaDesejos: (atual.alertasListaDesejos ?? []).filter((item) => item.desejoId !== alerta.desejoId) }
+        : atual);
+      await carregarDashboard().catch(() => {});
+    } catch {
+      setErroDashboard(true);
+    } finally {
+      setProcessandoAlertaId(null);
+    }
+  };
+
+  const continuarMonitorandoDoAlerta = async (alerta) => {
+    setProcessandoAlertaId(alerta.desejoId);
+    setMensagem(null);
+    try {
+      await continuarMonitorandoDesejo(alerta.desejoId);
+      setDashboard((atual) => atual
+        ? { ...atual, alertasListaDesejos: (atual.alertasListaDesejos ?? []).filter((item) => item.desejoId !== alerta.desejoId) }
+        : atual);
+      await carregarDashboard().catch(() => {});
+    } catch {
+      setErroDashboard(true);
+    } finally {
+      setProcessandoAlertaId(null);
+    }
+  };
+
   const voltarParaBiblioteca = () => {
     setJogoEmEdicao(null);
     setModoBiblioteca(null);
@@ -239,7 +273,13 @@ function App() {
       {tela === 'inicio' && <main id="inicio">
         <header className="page-header"><div><span className="eyebrow">VISÃO GERAL</span><h1>Início</h1><p>Seu espaço pessoal para acompanhar jogos e conquistas.</p></div></header>
         {erroDashboard && <div className="feedback erro page-feedback" role="alert">Não foi possível carregar o resumo do banco local.</div>}
-        <HomeDashboard dashboard={dashboard} perfil={perfil} />
+        <HomeDashboard
+          dashboard={dashboard}
+          perfil={perfil}
+          onRemoverDesejo={removerDesejoDoAlerta}
+          onContinuarMonitorando={continuarMonitorandoDoAlerta}
+          processandoAlertaId={processandoAlertaId}
+        />
       </main>}
 
       {tela === 'biblioteca' && modoBiblioteca && <LibraryGameScreen
