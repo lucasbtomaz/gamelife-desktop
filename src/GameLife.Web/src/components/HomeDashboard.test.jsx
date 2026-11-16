@@ -39,7 +39,17 @@ test('apresenta o resumo vivo com plataformas e anos', () => {
   expect(within(screen.getByText('Jogos na biblioteca').closest('article')).getByText('2')).toBeInTheDocument();
   expect(within(screen.getByText('Conquistas possíveis').closest('article')).getByText('4299')).toBeInTheDocument();
   expect(within(screen.getByText('Conquistas obtidas').closest('article')).getByText('2971')).toBeInTheDocument();
-  expect(within(screen.getByText('Percentual de conquistas').closest('article')).getByText('69,11%')).toBeInTheDocument();
+  expect(within(screen.getByText('Percentual de conquistas').closest('article')).getByText('69,1%')).toBeInTheDocument();
+
+  const progresso = screen.getByRole('region', { name: 'Progresso geral da biblioteca' });
+  expect(within(progresso).getByRole('heading', { name: 'Progresso geral da biblioteca' })).toBeInTheDocument();
+  expect(within(progresso).getByText('2 zerados')).toBeInTheDocument();
+  expect(within(progresso).getByText('0 em andamento')).toBeInTheDocument();
+  expect(within(progresso).getByText('2 jogos totais')).toBeInTheDocument();
+  expect(within(progresso).getByText('Zerados (100%)')).toBeInTheDocument();
+  expect(within(progresso).getByText('Em andamento (0%)')).toBeInTheDocument();
+  expect(progresso.querySelector('.overall-progress-fill--completed')).toHaveStyle({ width: '100%' });
+  expect(progresso.querySelector('.overall-progress-fill--active')).toHaveStyle({ width: '0%' });
 
   expect(screen.getByRole('heading', { name: 'Jogos zerados por plataforma' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Jogos na biblioteca por plataforma' })).toBeInTheDocument();
@@ -50,4 +60,15 @@ test('apresenta o resumo vivo com plataformas e anos', () => {
   expect(gradeAnual).toHaveStyle({ gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))' });
   expect(screen.getByText('2024')).toBeInTheDocument();
   expect(screen.getByText('2025')).toBeInTheDocument();
+});
+
+test('mantém o progresso vazio quando ainda não existem jogos', () => {
+  render(<HomeDashboard dashboard={{ resumo: { totalJogos: 0, jogosZerados: 0 } }} perfil={perfil} />);
+
+  const progresso = screen.getByRole('region', { name: 'Progresso geral da biblioteca' });
+  expect(within(progresso).getByText('0 jogos totais')).toBeInTheDocument();
+  expect(within(progresso).getByText('Zerados (0%)')).toBeInTheDocument();
+  expect(within(progresso).getByText('Em andamento (0%)')).toBeInTheDocument();
+  expect(progresso.querySelector('.overall-progress-fill--completed')).toHaveStyle({ width: '0%' });
+  expect(progresso.querySelector('.overall-progress-fill--active')).toHaveStyle({ width: '0%' });
 });

@@ -86,6 +86,22 @@ test('edita somente a plataforma selecionada dentro da ficha', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Atualizar acompanhamento' }));
 
   await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/api/acompanhamentos-jogos/2', expect.objectContaining({ method: 'PUT' })));
-  expect(screen.getByRole('group', { name: 'PC' })).toHaveTextContent('30 h');
-  expect(screen.getByRole('group', { name: 'XBOX' })).toHaveTextContent('12 h');
+  expect(screen.getByRole('group', { name: 'PC' })).toHaveTextContent('30h');
+  expect(screen.getByRole('group', { name: 'XBOX' })).toHaveTextContent('12h');
+});
+
+test('apresenta ficha com data, métricas e progresso limitado a cem por cento', async () => {
+  fetch.mockResolvedValueOnce({ ok: true, json: async () => [{ ...registro, percentualConquistas: 125 }] });
+
+  render(<GameTrackingScreen />);
+
+  const ficha = await screen.findByRole('article', { name: 'Hades' });
+  const plataforma = within(ficha).getByRole('group', { name: 'PC' });
+  expect(within(plataforma).getByText('Zerado em 05/11/2026')).toBeInTheDocument();
+  expect(within(plataforma).getByText('30h')).toBeInTheDocument();
+  expect(within(plataforma).getByText('10 / 20')).toBeInTheDocument();
+  expect(within(plataforma).getByText('100%')).toBeInTheDocument();
+  expect(plataforma.querySelector('.progress-track > span')).toHaveStyle({ width: '100%' });
+  expect(within(plataforma).getByRole('button', { name: 'Editar Hades em PC' })).toBeInTheDocument();
+  expect(within(plataforma).getByRole('button', { name: 'Excluir Hades em PC' })).toBeInTheDocument();
 });

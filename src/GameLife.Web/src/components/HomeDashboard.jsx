@@ -1,3 +1,5 @@
+import { formatarPercentual, limitarPercentual } from '../utils/percentual.js';
+
 const valorOuZero = (valor) => Number(valor) || 0;
 
 export const formatarHoras = (horas) => {
@@ -10,11 +12,6 @@ export const formatarHoras = (horas) => {
     .map((parte) => String(parte).padStart(2, '0'))
     .join(':');
 };
-
-const formatarPercentual = (valor) => `${valorOuZero(valor).toLocaleString('pt-BR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-})}%`;
 
 const MetricCard = ({ valor, rotulo }) => (
   <article className="stat-card dashboard-stat">
@@ -36,6 +33,38 @@ const PlatformPanel = ({ titulo, itens = [] }) => (
     </div>
   </section>
 );
+
+const OverallProgress = ({ total, completed }) => {
+  const safeTotal = Math.max(0, valorOuZero(total));
+  const safeCompleted = Math.min(safeTotal, Math.max(0, valorOuZero(completed)));
+  const active = safeTotal - safeCompleted;
+  const completedPercent = safeTotal === 0 ? 0 : limitarPercentual((safeCompleted / safeTotal) * 100);
+  const activePercent = safeTotal === 0 ? 0 : limitarPercentual((active / safeTotal) * 100);
+
+  return <section className="overall-progress-card" aria-label="Progresso geral da biblioteca">
+    <div className="overall-progress-head">
+      <h2>Progresso geral da biblioteca</h2>
+      <div className="overall-progress-head-summary">
+        <span>{safeCompleted} zerados</span>
+        <b>•</b>
+        <span>{active} em andamento</span>
+      </div>
+    </div>
+    <div
+      className="overall-progress-track"
+      role="img"
+      aria-label={`${formatarPercentual(completedPercent)} zerados e ${formatarPercentual(activePercent)} em andamento`}
+    >
+      <span className="overall-progress-fill overall-progress-fill--completed" style={{ width: `${completedPercent}%` }} />
+      <span className="overall-progress-fill overall-progress-fill--active" style={{ width: `${activePercent}%` }} />
+    </div>
+    <div className="overall-progress-legend">
+      <span><i className="overall-progress-dot overall-progress-dot--completed" />Zerados ({formatarPercentual(completedPercent)})</span>
+      <span><i className="overall-progress-dot overall-progress-dot--active" />Em andamento ({formatarPercentual(activePercent)})</span>
+      <strong>{safeTotal} jogos totais</strong>
+    </div>
+  </section>;
+};
 
 function HomeDashboard({ dashboard, perfil }) {
   const resumo = dashboard?.resumo ?? {};
@@ -62,6 +91,8 @@ function HomeDashboard({ dashboard, perfil }) {
         <MetricCard valor={formatarPercentual(resumo.percentualConquistas)} rotulo="Percentual de conquistas" />
         <MetricCard valor={valorOuZero(resumo.totalColecoes)} rotulo="Coleções" />
       </section>
+
+      <OverallProgress total={resumo.totalJogos} completed={resumo.jogosZerados} />
 
       <section className="dashboard-platforms">
         <PlatformPanel titulo="Jogos zerados por plataforma" itens={dashboard?.zeradosPorPlataforma} />
