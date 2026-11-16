@@ -11,6 +11,8 @@ afterEach(() => vi.restoreAllMocks());
 test('carrega o estado vazio e cadastra um desejo', async () => {
   render(<WishlistScreen />);
   expect(await screen.findByText(/nenhum jogo na lista/i)).toBeInTheDocument();
+  expect(screen.queryByText(/preço que gostaria de pagar/i)).not.toBeInTheDocument();
+  expect(screen.queryByPlaceholderText(/preço desejado/i)).not.toBeInTheDocument();
 
   fetch.mockResolvedValueOnce({
     ok: true,
@@ -21,9 +23,111 @@ test('carrega o estado vazio e cadastra um desejo', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar desejo' }));
 
   await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/api/lista-desejos', expect.objectContaining({ method: 'POST' })));
+  const chamada = fetch.mock.calls.find(([url, options]) => url === '/api/lista-desejos' && options?.method === 'POST');
+  expect(JSON.parse(chamada[1].body)).toEqual({ titulo: 'Hades', precoDesejado: null, observacao: null });
   expect(await screen.findByRole('heading', { name: 'Hades' })).toBeInTheDocument();
+  expect(screen.queryByLabelText('Editar preço desejado de Hades')).not.toBeInTheDocument();
+  expect(screen.queryByText('Preço desejado')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Adicionar assinatura para Hades' })).toBeInTheDocument();
   expect(screen.queryByLabelText('Serviço')).not.toBeInTheDocument();
+});
+
+test('busca desejos pelo nome do jogo ou pela loja', async () => {
+  const itens = [
+    { id: 9, jogoId: 90, titulo: 'Pokémon Legends', precosAtuais: [], historicoPrecos: [], assinaturas: [] },
+    {
+      id: 10,
+      jogoId: 100,
+      titulo: 'Celeste',
+      precosAtuais: [],
+      historicoPrecos: [{ id: 20, canalId: 3, canalNome: 'GOG', precoAtual: 20, disponivel: true, consultadoEm: '2026-09-01T10:00:00Z' }],
+      assinaturas: []
+    }
+  ];
+  fetch.mockImplementation(async (url) => ({ ok: true, json: async () => url === '/api/canais' ? [] : itens }));
+
+  render(<WishlistScreen />);
+  const busca = await screen.findByLabelText('Buscar por jogo ou loja');
+
+  fireEvent.change(busca, { target: { value: 'pokemon' } });
+  expect(screen.getByRole('heading', { name: 'Pokémon Legends' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Celeste' })).not.toBeInTheDocument();
+
+  fireEvent.change(busca, { target: { value: 'gog' } });
+  expect(screen.getByRole('heading', { name: 'Celeste' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Pokémon Legends' })).not.toBeInTheDocument();
+
+  fireEvent.change(busca, { target: { value: 'inexistente' } });
+  expect(screen.getByText('Nenhum desejo encontrado')).toBeInTheDocument();
+});
+
+test('mostra faixas de preço e alertas acumuláveis apenas em cotações disponíveis', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => [{
+      id: 3,
+      jogoId: 30,
+      titulo: 'Hades II',
+      jaTenho: false,
+      menorPrecoAtual: 19,
+      menorPrecoHistorico: 19,
+      precosAtuais: [
+        { canalId: 1, canalNome: 'STEAM', precoAtual: 19, precoCheio: 100, menorPrecoHistorico: 19, disponivel: true },
+        { canalId: 2, canalNome: 'GOG', precoAtual: 49, precoCheio: 100, menorPrecoHistorico: 39, disponivel: true },
+        { canalId: 3, canalNome: 'EPIC', precoAtual: 9, precoCheio: 100, menorPrecoHistorico: 9, disponivel: false }
+      ],
+      historicoPrecos: [],
+      assinaturas: []
+    }]
+  });
+
+  render(<WishlistScreen />);
+
+  const steam = await screen.findByRole('group', { name: 'Cotação STEAM' });
+  expect(within(steam).getByText('81% de desconto')).toBeInTheDocument();
+  expect(within(steam).getByText('80% ou mais de desconto')).toBeInTheDocument();
+  expect(within(steam).getByText('Menor preço histórico')).toBeInTheDocument();
+  expect(within(steam).getByText('Abaixo de R$ 20')).toBeInTheDocument();
+  expect(within(steam).queryByText('Abaixo de R$ 50')).not.toBeInTheDocument();
+
+  const gog = screen.getByRole('group', { name: 'Cotação GOG' });
+  expect(within(gog).getByText('Abaixo de R$ 50')).toBeInTheDocument();
+  expect(within(gog).queryByText('Abaixo de R$ 20')).not.toBeInTheDocument();
+
+  const epic = screen.getByRole('group', { name: 'Cotação EPIC' });
+  expect(within(epic).getByText('Indisponível')).toBeInTheDocument();
+  expect(within(epic).queryByText(/Abaixo de R\$/)).not.toBeInTheDocument();
+  expect(within(epic).queryByText('Menor preço histórico')).not.toBeInTheDocument();
+});
+
+test('mostra as lojas dos menores preços atual e histórico', async () => {
+  const item = {
+    id: 8,
+    jogoId: 80,
+    titulo: 'Forza Horizon 5',
+    jaTenho: false,
+    menorPrecoAtual: 99,
+    menorPrecoHistorico: 59,
+    precosAtuais: [
+      { canalId: 1, canalNome: 'Xbox One', precoAtual: 99, disponivel: true },
+      { canalId: 2, canalNome: 'Xbox Series S', precoAtual: 99, disponivel: true }
+    ],
+    historicoPrecos: [
+      { id: 10, canalId: 1, canalNome: 'Xbox One', precoAtual: 59, disponivel: true, consultadoEm: '2026-09-01T10:00:00Z' }
+    ],
+    assinaturas: []
+  };
+  fetch.mockImplementation(async (url) => ({
+    ok: true,
+    json: async () => url === '/api/canais' ? [{ id: 1, nome: 'Xbox One', permitePreco: false }] : [item]
+  }));
+
+  render(<WishlistScreen />);
+
+  expect(await screen.findByRole('heading', { name: 'Forza Horizon 5' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Loja do menor atual')).toHaveTextContent('Xbox One +1');
+  expect(screen.getByLabelText('Loja do menor histórico')).toHaveTextContent('Xbox One');
+  expect(document.querySelector('#canais-preco option[value="Xbox One"]')).not.toBeNull();
 });
 
 test('mostra posse, preços e mantém formulário após erro de cotação', async () => {

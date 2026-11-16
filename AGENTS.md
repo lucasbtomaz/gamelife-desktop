@@ -24,6 +24,9 @@ Estas regras protegem o funcionamento local e os dados do usuário. Não altere 
 
 - Testes automatizados nunca podem escrever na Área de Trabalho real nem no `AppData` real.
 - A publicação deve falhar antes de alterar o executável quando build ou testes falharem.
+- Antes de integrar, puxar ou reaplicar uma melhoria, comparar a tela alterada com o histórico recente e preservar todos os comportamentos já entregues.
+- Mudanças novas devem ser combinadas com as funcionalidades existentes; nunca substituir uma tela inteira por uma versão que remova recursos anteriores.
+- Toda regressão corrigida deve receber teste automatizado para impedir que outro commit volte a removê-la.
 - Após alterar publicação, atalho ou persistência, validar o ciclo real: abrir, conferir os dados, fechar normalmente e abrir novamente.
 - Confirmar que o atalho continua apontando para `artifacts/GameLife/GameLife.exe`.
 - Confirmar a integridade do SQLite e a preservação das quantidades antes de declarar conclusão.

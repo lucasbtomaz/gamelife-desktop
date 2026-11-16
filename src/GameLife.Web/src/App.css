@@ -994,6 +994,37 @@ button:disabled {
   gap: 18px;
 }
 
+.wishlist-search {
+  padding: 16px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--bg-card);
+}
+
+.wishlist-search label {
+  margin-bottom: 8px;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wishlist-search div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wishlist-search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.wishlist-search span {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .wishlist-card {
   background: var(--bg-card);
   border: 1px solid var(--line-strong);
@@ -1063,7 +1094,7 @@ button:disabled {
 
 .wish-edit-form {
   display: grid;
-  grid-template-columns: 1fr 2fr auto;
+  grid-template-columns: 1fr auto;
   gap: 10px;
   margin: 14px 0;
 }
@@ -1081,7 +1112,7 @@ button:disabled {
 
 .price-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin: 18px 0;
 }
@@ -1103,21 +1134,98 @@ button:disabled {
   font-family: monospace;
 }
 
-.store-prices {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.price-origin {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+  color: #c4b5fd;
+  font-size: 11px;
+  font-weight: 700;
 }
 
-.store-prices span {
+.store-prices {
+  display: grid;
+  gap: 10px;
+}
+
+.store-price-row {
   display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+}
+
+.store-price-row.is-unavailable {
+  opacity: 0.7;
+}
+
+.store-price-main,
+.deal-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(139, 92, 246, 0.14);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  color: #c4b5fd;
+}
+
+.store-price-main b {
+  min-width: 72px;
+  color: #e2e8f0;
+}
+
+.store-price-main strong {
+  color: #fff;
+  font-family: monospace;
+}
+
+.store-price-main del {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.discount-value {
+  color: #34d399;
   font-size: 12px;
+  font-weight: 700;
+}
+
+.deal-badges {
+  justify-content: flex-end;
+}
+
+.deal-badge {
+  padding: 4px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.deal-badge--desconto-80 {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.deal-badge--menor-historico {
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.38);
+  background: rgba(139, 92, 246, 0.14);
+}
+
+.deal-badge--abaixo-20 {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.38);
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.deal-badge--abaixo-50 {
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(14, 165, 233, 0.14);
 }
 
 .price-form {
