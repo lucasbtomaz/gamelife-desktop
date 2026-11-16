@@ -213,7 +213,7 @@ public sealed class AcompanhamentosJogosController : ControllerBase
                 item => item.JogoId == jogo.Id && item.CanalId == canal.Id, cancellationToken);
         if (posse is null && request.AdicionarBiblioteca)
         {
-            posse = new PosseJogo { Jogo = jogo, Canal = canal, MidiaFisica = false, AdquiridoEm = DateTime.UtcNow };
+            posse = new PosseJogo { Jogo = jogo, Canal = canal, CompraDigital = true, MidiaFisica = false, PorAssinatura = false, AdquiridoEm = DateTime.UtcNow };
             _contexto.PossesJogos.Add(posse);
         }
         acompanhamento.PosseJogo = posse;

@@ -71,6 +71,44 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
         Assert.Equal(0, dashboard.ZeradosPorAno.Single(item => item.Ano == 2043).Total);
     }
 
+    [Fact]
+    public async Task ExibeAlertaNaTelaInicialParaJogoNaBibliotecaComPrecoMonitoradoEPermiteSilenciar()
+    {
+        var titulo = $"Alerta Desejo {Guid.NewGuid()}";
+        var desejoResp = await _client.PostAsJsonAsync("/api/lista-desejos", new { titulo, precoDesejado = 80m });
+        desejoResp.EnsureSuccessStatusCode();
+        var desejo = await desejoResp.Content.ReadFromJsonAsync<DesejoSimples>();
+
+        await _client.PostAsJsonAsync($"/api/lista-desejos/{desejo!.Id}/precos", new
+        {
+            nomeCanal = "NUUVEM",
+            precoAtual = 75m,
+            disponivel = true
+        });
+        await _client.PostAsJsonAsync($"/api/lista-desejos/{desejo.Id}/precos", new
+        {
+            nomeCanal = "STEAM",
+            precoAtual = 90m,
+            disponivel = true
+        });
+
+        await AdicionarJogo(titulo, "PC");
+
+        var inicioComAlerta = await _client.GetFromJsonAsync<DashboardResponse>("/api/dashboard/inicio");
+        var alerta = Assert.Single(inicioComAlerta!.AlertasListaDesejos, item => item.DesejoId == desejo.Id);
+        Assert.Equal(titulo, alerta.Titulo);
+        Assert.Equal(["NUUVEM", "STEAM"], alerta.LojasMonitoradas);
+
+        var silenciar = await _client.PostAsync($"/api/lista-desejos/{desejo.Id}/continuar-monitorando", content: null);
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, silenciar.StatusCode);
+
+        var inicioSemAlerta = await _client.GetFromJsonAsync<DashboardResponse>("/api/dashboard/inicio");
+        Assert.DoesNotContain(inicioSemAlerta!.AlertasListaDesejos, item => item.DesejoId == desejo.Id);
+
+        var desejos = await _client.GetFromJsonAsync<DesejoSimples[]>("/api/lista-desejos");
+        Assert.Contains(desejos!, item => item.Id == desejo.Id);
+    }
+
     private async Task<JogoBibliotecaResponse> AdicionarJogo(string titulo, params string[] plataformas)
     {
         var response = await _client.PostAsJsonAsync("/biblioteca", new
@@ -97,10 +135,20 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
         decimal PercentualConquistas);
     private sealed record DistribuicaoResponse(string Plataforma, int Total);
     private sealed record ZeradosAnoResponse(int Ano, int Total);
+    private sealed record DesejoSimples(int Id, int JogoId);
+
+    private sealed record AlertaDesejoResponse(
+        int DesejoId,
+        int JogoId,
+        string Titulo,
+        string[] LojasMonitoradas,
+        decimal? MenorPrecoAtual);
+
     private sealed record DashboardResponse(
         PerfilResponse Perfil,
         ResumoResponse Resumo,
         DistribuicaoResponse[] BibliotecaPorPlataforma,
         DistribuicaoResponse[] ZeradosPorPlataforma,
-        ZeradosAnoResponse[] ZeradosPorAno);
+        ZeradosAnoResponse[] ZeradosPorAno,
+        AlertaDesejoResponse[] AlertasListaDesejos);
 }

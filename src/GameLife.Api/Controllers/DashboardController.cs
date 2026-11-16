@@ -1,54 +1,18 @@
+using gamelife_api.Context;
+using gamelife_api.Models;
+using gamelife_api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using gamelife_api.Context;
-using gamelife_api.Services;
-using gamelife_api.Models;
 
 namespace gamelife_api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class DashboardController : ControllerBase
+    [Route("api/dashboard")]
+    public sealed class DashboardController : ControllerBase
     {
         private readonly GameLifeDbContext _contexto;
 
-        public DashboardController(GameLifeDbContext contexto)
-        {
-            _contexto = contexto;
-        }
-
-        // GET: api/dashboard/stats
-        [HttpGet("stats")]
-        public async Task<ActionResult<object>> ObterEstatisticas()
-        {
-            var totalJogos = await _contexto.PossesJogos.Select(item => item.JogoId).Distinct().CountAsync();
-            var totalPosses = await _contexto.PossesJogos.CountAsync();
-            var totalCanais = await _contexto.Canais.CountAsync();
-            var totalListaDesejos = await _contexto.ItensListaDesejos.CountAsync();
-
-            var registros = await _contexto.AcompanhamentosJogos.ToListAsync();
-            var horasJogadas = registros.Sum(r => r.TempoEmHoras ?? 0);
-            var jogosZerados = registros.Count(r => r.Status == StatusAcompanhamentoJogo.Zerado);
-            var conquistasObtidas = registros.Sum(r => r.ConquistasObtidas ?? 0);
-            var conquistasPossiveis = registros.Sum(r => r.ConquistasPossiveis ?? 0);
-            var taxaConclusao = conquistasPossiveis > 0 ? (int)Math.Round(((double)conquistasObtidas / conquistasPossiveis) * 100) : 0;
-
-            return Ok(new
-            {
-                TotalJogos = totalJogos,
-                TotalPosses = totalPosses,
-                TotalCanais = totalCanais,
-                TotalListaDesejos = totalListaDesejos,
-                HorasJogadas = Math.Round(horasJogadas, 1),
-                JogosZerados = jogosZerados,
-                Conquistas = new
-                {
-                    Obtidas = conquistasObtidas,
-                    Possiveis = conquistasPossiveis,
-                    TaxaConclusao = taxaConclusao
-                }
-            });
-        }
+        public DashboardController(GameLifeDbContext contexto) => _contexto = contexto;
 
         [HttpGet("inicio")]
         public async Task<ActionResult<object>> ObterInicio(CancellationToken cancellationToken)
@@ -58,10 +22,13 @@ namespace gamelife_api.Controllers
                 .Select(item => new
                 {
                     item.JogoId,
+                    item.CompraDigital,
                     item.MidiaFisica,
+                    item.PorAssinatura,
                     Plataforma = item.Canal.Nome
                 })
                 .ToListAsync(cancellationToken);
+
             var registros = await _contexto.AcompanhamentosJogos.AsNoTracking()
                 .Select(item => new
                 {
@@ -76,8 +43,9 @@ namespace gamelife_api.Controllers
 
             var totalJogos = posses.Select(item => item.JogoId).Distinct().Count();
             var midiasFisicas = posses.Count(item => item.MidiaFisica);
-            var jogosDigitais = posses.Count(item => !item.MidiaFisica);
+            var jogosDigitais = posses.Count(item => item.CompraDigital);
             var totalColecoes = await _contexto.Colecoes.CountAsync(cancellationToken);
+
             var registrosFinalizados = registros.Where(item => item.Status == StatusAcompanhamentoJogo.Zerado).ToList();
             var horasZeradas = registrosFinalizados.Sum(item => item.TempoEmHoras ?? 0);
             var conquistasPossiveis = registros.Sum(item => item.ConquistasPossiveis ?? 0);
@@ -85,6 +53,7 @@ namespace gamelife_api.Controllers
             var percentualConquistas = conquistasPossiveis == 0
                 ? 0
                 : Math.Round(conquistasObtidas * 100m / conquistasPossiveis, 2, MidpointRounding.AwayFromZero);
+
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var tempoNaPlataformaAnos = DashboardResumoCalculator.CalcularAnosCompletos(
                 DateOnly.FromDateTime(perfil.DataEntrada),
@@ -94,18 +63,22 @@ namespace gamelife_api.Controllers
                 posses.Select(item => item.Plataforma));
             var zeradosPorPlataforma = CriarDistribuicaoPlataformas(
                 registrosFinalizados.Select(item => item.Plataforma));
+
             var maiorAnoFinalizado = registrosFinalizados
                 .Where(item => item.DataStatus.HasValue)
                 .Select(item => item.DataStatus!.Value.Year)
                 .DefaultIfEmpty(0)
                 .Max();
+
             var ultimoAno = Math.Max(
                 2043,
                 Math.Max(hoje.Year, maiorAnoFinalizado));
+
             var contagemPorAno = registrosFinalizados
                 .Where(item => item.DataStatus.HasValue)
                 .GroupBy(item => item.DataStatus!.Value.Year)
                 .ToDictionary(grupo => grupo.Key, grupo => grupo.Count());
+
             var zeradosPorAno = Enumerable.Range(2024, ultimoAno - 2024 + 1)
                 .Select(ano => new DashboardAnoResponse(ano, contagemPorAno.GetValueOrDefault(ano)))
                 .ToArray();
@@ -119,7 +92,9 @@ namespace gamelife_api.Controllers
                         item.JogoId,
                         item.Jogo.Titulo,
                         Plataforma = item.Canal.Nome,
+                        item.CompraDigital,
                         item.MidiaFisica,
+                        item.PorAssinatura,
                         item.AdquiridoEm
                     })
                     .ToListAsync(cancellationToken)
@@ -138,6 +113,35 @@ namespace gamelife_api.Controllers
                     item.DesbloqueadaEm
                 })
                 .ToListAsync(cancellationToken);
+
+            var alertasDesejosBrutos = await _contexto.ItensListaDesejos.AsNoTracking()
+                .Include(item => item.Jogo).ThenInclude(jogo => jogo.PossesJogos)
+                .Include(item => item.RegistrosPrecos).ThenInclude(preco => preco.Canal)
+                .Where(item => !item.AlertaBibliotecaSilenciado &&
+                               item.Jogo.PossesJogos.Any() &&
+                               item.RegistrosPrecos.Any())
+                .ToListAsync(cancellationToken);
+
+            var alertasListaDesejos = alertasDesejosBrutos
+                .OrderBy(item => item.Jogo.Titulo)
+                .Select(item => new
+                {
+                    DesejoId = item.Id,
+                    item.JogoId,
+                    Titulo = item.Jogo.Titulo,
+                    LojasMonitoradas = item.RegistrosPrecos
+                        .Select(preco => preco.Canal.Nome)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(nome => nome, StringComparer.CurrentCultureIgnoreCase)
+                        .ToArray(),
+                    MenorPrecoAtual = item.RegistrosPrecos
+                        .GroupBy(preco => preco.CanalId)
+                        .Select(grupo => grupo.OrderByDescending(preco => preco.ConsultadoEm).ThenByDescending(preco => preco.Id).First())
+                        .Where(preco => preco.Disponivel)
+                        .Select(preco => (decimal?)preco.PrecoAtual)
+                        .Min()
+                })
+                .ToArray();
 
             return Ok(new
             {
@@ -159,7 +163,8 @@ namespace gamelife_api.Controllers
                 ZeradosPorPlataforma = zeradosPorPlataforma,
                 ZeradosPorAno = zeradosPorAno,
                 JogosRecentes = jogosRecentes,
-                Conquistas = conquistas
+                Conquistas = conquistas,
+                AlertasListaDesejos = alertasListaDesejos
             });
         }
 
@@ -169,6 +174,7 @@ namespace gamelife_api.Controllers
                 .Select(DashboardResumoCalculator.NormalizarPlataforma)
                 .GroupBy(nome => nome, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(grupo => grupo.Key, grupo => grupo.Count(), StringComparer.OrdinalIgnoreCase);
+
             var extras = contagens.Keys
                 .Except(DashboardResumoCalculator.PlataformasPrincipais, StringComparer.OrdinalIgnoreCase)
                 .OrderBy(nome => nome, StringComparer.CurrentCultureIgnoreCase);
@@ -182,4 +188,5 @@ namespace gamelife_api.Controllers
 }
 
 public sealed record DashboardDistribuicaoResponse(string Plataforma, int Total);
+
 public sealed record DashboardAnoResponse(int Ano, int Total);

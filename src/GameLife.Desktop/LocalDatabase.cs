@@ -22,7 +22,6 @@ public static class LocalDatabase
         ValidarDiretorioPublicado(baseDirectory);
         var applicationDirectory = new DirectoryInfo(Path.GetFullPath(baseDirectory));
         var projectRoot = applicationDirectory.Parent!.Parent!;
-
         return Path.Combine(projectRoot.FullName, "data", "gamelife.db");
     }
 
@@ -62,6 +61,7 @@ public static class LocalDatabase
         var backupPath = Path.Combine(
             Path.GetFullPath(backupDirectory),
             $"gamelife-before-change-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Guid.NewGuid():N}.db");
+
         var sourceBuilder = new SqliteConnectionStringBuilder
         {
             DataSource = fullPath,
@@ -74,11 +74,13 @@ public static class LocalDatabase
             Mode = SqliteOpenMode.ReadWriteCreate,
             Pooling = false
         };
+
         using var source = new SqliteConnection(sourceBuilder.ConnectionString);
         using var destination = new SqliteConnection(destinationBuilder.ConnectionString);
         source.Open();
         destination.Open();
         source.BackupDatabase(destination);
+
         return backupPath;
     }
 
@@ -91,6 +93,7 @@ public static class LocalDatabase
         var fullPath = Path.GetFullPath(databasePath);
         var directory = Path.GetDirectoryName(fullPath)
             ?? throw new InvalidOperationException("O diretório do banco local não foi encontrado.");
+
         Directory.CreateDirectory(directory);
         var databaseAlreadyExisted = File.Exists(fullPath);
 
@@ -102,25 +105,47 @@ public static class LocalDatabase
         {
             await using var local = new GameLifeDbContext(sqliteOptions);
             await local.Database.EnsureCreatedAsync(cancellationToken);
+
             var legacyPath = legacySqlitePath;
             var legacyExists = !string.IsNullOrWhiteSpace(legacyPath) && File.Exists(legacyPath);
             var legacyNeedsMerge = legacyExists &&
                                    File.GetLastWriteTimeUtc(legacyPath!) > File.GetLastWriteTimeUtc(fullPath);
+
             var trackingTableExists = await TabelaExisteAsync(local, "AcompanhamentosJogos", cancellationToken);
+            var subscriptionsTableExists = await TabelaExisteAsync(local, "AssinaturasJogos", cancellationToken);
+            var compraDigitalExists = await ColunaExisteAsync(local, "PossesJogos", "CompraDigital", cancellationToken);
+            var porAssinaturaExists = await ColunaExisteAsync(local, "PossesJogos", "PorAssinatura", cancellationToken);
+            var alertaSilenciadoExists = await ColunaExisteAsync(local, "ItensListaDesejos", "AlertaBibliotecaSilenciado", cancellationToken);
             var uniqueOwnershipIndexExists = await IndiceExisteAsync(
                 local, "IX_PossesJogos_JogoId_CanalId", cancellationToken);
-            if (databaseAlreadyExisted &&
-                (!trackingTableExists || !uniqueOwnershipIndexExists || legacyNeedsMerge))
+            var uniqueSubscriptionIndexExists = await IndiceExisteAsync(
+                local, "IX_AssinaturasJogos_JogoId_Servico", cancellationToken);
+
+            var schemaNeedsUpgrade = !trackingTableExists ||
+                                     !subscriptionsTableExists ||
+                                     !compraDigitalExists ||
+                                     !porAssinaturaExists ||
+                                     !alertaSilenciadoExists ||
+                                     !uniqueOwnershipIndexExists ||
+                                     !uniqueSubscriptionIndexExists;
+
+            if (databaseAlreadyExisted && (schemaNeedsUpgrade || legacyNeedsMerge))
             {
                 var projectRoot = Directory.GetParent(directory)?.FullName ?? directory;
                 CriarBackupAntesDeAlterar(fullPath, Path.Combine(projectRoot, "Backups"));
             }
+
             if (!uniqueOwnershipIndexExists)
                 await ValidarPosseUnicaPorPlataformaAsync(local, cancellationToken);
-            await AtualizarEsquemaAsync(local, cancellationToken);
 
-            if (legacyNeedsMerge &&
-                !Path.GetFullPath(legacyPath!).Equals(fullPath, StringComparison.OrdinalIgnoreCase))
+            await AtualizarEsquemaAsync(
+                local,
+                compraDigitalExists,
+                porAssinaturaExists,
+                alertaSilenciadoExists,
+                cancellationToken);
+
+            if (legacyNeedsMerge)
             {
                 var legacySqliteOptions = new DbContextOptionsBuilder<GameLifeDbContext>()
                     .UseSqlite(ObterConnectionString(legacyPath!))
@@ -130,11 +155,14 @@ public static class LocalDatabase
             }
 
             if (!databaseAlreadyExisted &&
+                !await local.Jogos.AnyAsync(cancellationToken) &&
+                !await local.Canais.AnyAsync(cancellationToken) &&
                 !string.IsNullOrWhiteSpace(legacyMySqlConnectionString))
             {
                 var legacyOptions = new DbContextOptionsBuilder<GameLifeDbContext>()
                     .UseMySQL(legacyMySqlConnectionString!)
                     .Options;
+
                 await using var legacy = new GameLifeDbContext(legacyOptions);
                 await LegacyDatabaseMigration.CopiarAsync(legacy, local, cancellationToken);
             }
@@ -143,6 +171,7 @@ public static class LocalDatabase
         {
             if (!databaseAlreadyExisted && File.Exists(fullPath))
                 File.Delete(fullPath);
+
             throw;
         }
     }
@@ -163,6 +192,33 @@ public static class LocalDatabase
             parameter.Value = tableName;
             command.Parameters.Add(parameter);
             return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken)) > 0;
+        }
+        finally
+        {
+            await connection.CloseAsync();
+        }
+    }
+
+    private static async Task<bool> ColunaExisteAsync(
+        GameLifeDbContext contexto,
+        string tableName,
+        string columnName,
+        CancellationToken cancellationToken)
+    {
+        var connection = contexto.Database.GetDbConnection();
+        await connection.OpenAsync(cancellationToken);
+        try
+        {
+            await using var command = connection.CreateCommand();
+            var quotedTable = tableName.Replace("\"", "\"\"");
+            command.CommandText = $"PRAGMA table_info(\"{quotedTable}\")";
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
         finally
         {
@@ -198,10 +254,12 @@ public static class LocalDatabase
         CancellationToken cancellationToken)
     {
         var duplicate = await contexto.PossesJogos.AsNoTracking()
+            .Select(item => new { item.JogoId, item.CanalId })
             .GroupBy(item => new { item.JogoId, item.CanalId })
             .Where(group => group.Count() > 1)
             .Select(group => new { group.Key.JogoId, group.Key.CanalId })
             .FirstOrDefaultAsync(cancellationToken);
+
         if (duplicate is not null)
         {
             throw new InvalidOperationException(
@@ -212,9 +270,12 @@ public static class LocalDatabase
 
     private static async Task AtualizarEsquemaAsync(
         GameLifeDbContext contexto,
+        bool compraDigitalExists,
+        bool porAssinaturaExists,
+        bool alertaSilenciadoExists,
         CancellationToken cancellationToken)
     {
-        const string criarTabela = """
+        const string criarTabelasEIndices = """
             CREATE TABLE IF NOT EXISTS "AcompanhamentosJogos" (
                 "Id" INTEGER NOT NULL CONSTRAINT "PK_AcompanhamentosJogos" PRIMARY KEY AUTOINCREMENT,
                 "JogoId" INTEGER NOT NULL,
@@ -233,8 +294,42 @@ public static class LocalDatabase
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_AcompanhamentosJogos_JogoId_CanalId" ON "AcompanhamentosJogos" ("JogoId", "CanalId");
             CREATE INDEX IF NOT EXISTS "IX_AcompanhamentosJogos_PosseJogoId" ON "AcompanhamentosJogos" ("PosseJogoId");
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_PossesJogos_JogoId_CanalId" ON "PossesJogos" ("JogoId", "CanalId");
+            CREATE TABLE IF NOT EXISTS "AssinaturasJogos" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_AssinaturasJogos" PRIMARY KEY AUTOINCREMENT,
+                "JogoId" INTEGER NOT NULL,
+                "Servico" TEXT NOT NULL,
+                "Situacao" TEXT NOT NULL,
+                "DataDisponibilidade" TEXT NULL,
+                "DataEncerramento" TEXT NULL,
+                CONSTRAINT "FK_AssinaturasJogos_Jogos_JogoId" FOREIGN KEY ("JogoId") REFERENCES "Jogos" ("Id") ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_AssinaturasJogos_JogoId_Servico" ON "AssinaturasJogos" ("JogoId", "Servico");
             """;
 
-        await contexto.Database.ExecuteSqlRawAsync(criarTabela, cancellationToken);
+        await contexto.Database.ExecuteSqlRawAsync(criarTabelasEIndices, cancellationToken);
+
+        if (!compraDigitalExists)
+        {
+            await contexto.Database.ExecuteSqlRawAsync(
+                """
+                ALTER TABLE "PossesJogos" ADD COLUMN "CompraDigital" INTEGER NOT NULL DEFAULT 0;
+                UPDATE "PossesJogos" SET "CompraDigital" = 1 WHERE "MidiaFisica" = 0;
+                """,
+                cancellationToken);
+        }
+
+        if (!porAssinaturaExists)
+        {
+            await contexto.Database.ExecuteSqlRawAsync(
+                """ALTER TABLE "PossesJogos" ADD COLUMN "PorAssinatura" INTEGER NOT NULL DEFAULT 0;""",
+                cancellationToken);
+        }
+
+        if (!alertaSilenciadoExists)
+        {
+            await contexto.Database.ExecuteSqlRawAsync(
+                """ALTER TABLE "ItensListaDesejos" ADD COLUMN "AlertaBibliotecaSilenciado" INTEGER NOT NULL DEFAULT 0;""",
+                cancellationToken);
+        }
     }
 }

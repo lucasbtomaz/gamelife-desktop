@@ -10,6 +10,12 @@ export const listarCanais = () => requisitar('/api/canais');
 export const criarDesejo = (dados) => requisitar('/api/lista-desejos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
 export const adicionarPreco = (id, dados) => requisitar(`/api/lista-desejos/${id}/precos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
 export const atualizarDesejo = (id, dados) => requisitar(`/api/lista-desejos/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+
+export async function continuarMonitorandoDesejo(id) {
+  const resposta = await fetch(`/api/lista-desejos/${id}/continuar-monitorando`, { method: 'POST' });
+  if (!resposta.ok) throw new Error('Não foi possível manter o monitoramento.');
+}
+
 export async function excluirDesejo(id) {
   const resposta = await fetch(`/api/lista-desejos/${id}`, { method: 'DELETE' });
   if (!resposta.ok) throw new Error('Não foi possível excluir o desejo.');

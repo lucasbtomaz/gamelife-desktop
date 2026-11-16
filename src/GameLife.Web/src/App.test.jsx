@@ -90,7 +90,7 @@ test('adiciona um jogo pela tela exclusiva', async () => {
         jogoId: 1,
         titulo: 'Hades',
         anoLancamento: null,
-        plataformas: [{ posseId: 1, canalId: 1, nome: 'PC', midiaFisica: true, acompanhamento: null }]
+        plataformas: [{ posseId: 1, canalId: 1, nome: 'PC', compraDigital: true, midiaFisica: true, porAssinatura: false, acompanhamento: null }], assinaturas: []
       })
     })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ total: 1, zerados: 0, dropados: 0, naoTerminados: 1 }) })
@@ -114,7 +114,7 @@ test('adiciona um jogo pela tela exclusiva', async () => {
     method: 'POST',
     body: JSON.stringify({
       titulo: 'Hades',
-      plataformas: [{ plataforma: 'PC', midiaFisica: true }]
+      plataformas: [{ plataforma: 'PC', compraDigital: true, midiaFisica: true, porAssinatura: false }]
     })
   })));
   expect(await screen.findByText('Hades')).toBeInTheDocument();
@@ -144,11 +144,11 @@ test('edita uma ficha existente e adiciona outra plataforma sem duplicar o jogo'
     jogoId: 34,
     titulo: 'Graveyard Keeper',
     anoLancamento: 2018,
-    plataformas: [{ posseId: 1, canalId: 1, nome: 'STEAM', midiaFisica: false, acompanhamento: null }]
+    plataformas: [{ posseId: 1, canalId: 1, nome: 'STEAM', compraDigital: true, midiaFisica: false, porAssinatura: false, acompanhamento: null }], assinaturas: []
   };
   const updated = {
     ...game,
-    plataformas: [...game.plataformas, { posseId: 2, canalId: 2, nome: 'XBOX', midiaFisica: true, acompanhamento: null }]
+    plataformas: [...game.plataformas, { posseId: 2, canalId: 2, nome: 'XBOX', compraDigital: true, midiaFisica: true, porAssinatura: false, acompanhamento: null }]
   };
   fetch
     .mockResolvedValueOnce({ ok: true, json: async () => [] })
@@ -176,12 +176,51 @@ test('edita uma ficha existente e adiciona outra plataforma sem duplicar o jogo'
       titulo: 'Graveyard Keeper',
       anoLancamento: 2018,
       plataformas: [
-        { plataforma: 'STEAM', midiaFisica: false },
-        { plataforma: 'XBOX', midiaFisica: true }
+        { plataforma: 'STEAM', compraDigital: true, midiaFisica: false, porAssinatura: false },
+        { plataforma: 'XBOX', compraDigital: true, midiaFisica: true, porAssinatura: false }
       ]
     })
   })));
   expect(screen.getByRole('heading', { name: 'Minha Biblioteca de Jogos' })).toBeInTheDocument();
   expect(screen.getAllByRole('heading', { name: 'Graveyard Keeper' })).toHaveLength(1);
   expect(screen.getByRole('group', { name: 'XBOX' })).toBeInTheDocument();
+});
+
+
+test('permite remover ou continuar monitorando desejo a partir do alerta na tela inicial', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      perfil: { nome: 'Jogador', fotoDataUrl: null, exibirJogosRecentes: true },
+      resumo: { totalJogos: 1 },
+      bibliotecaPorPlataforma: [],
+      zeradosPorPlataforma: [],
+      zeradosPorAno: [],
+      jogosRecentes: [],
+      conquistas: [],
+      alertasListaDesejos: [
+        { desejoId: 15, jogoId: 4, titulo: 'Celeste', lojasMonitoradas: ['STEAM'] }
+      ]
+    })
+  });
+
+  render(<App />);
+  const alerta = await screen.findByRole('region', { name: 'Alertas da Lista de Desejos' });
+  expect(alerta).toHaveTextContent('Celeste');
+  expect(alerta).toHaveTextContent('STEAM');
+
+  fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        perfil: { nome: 'Jogador', fotoDataUrl: null, exibirJogosRecentes: true },
+        resumo: { totalJogos: 1 },
+        alertasListaDesejos: []
+      })
+    });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Continuar monitorando' }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/lista-desejos/15/continuar-monitorando', { method: 'POST' }));
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Alertas da Lista de Desejos' })).not.toBeInTheDocument());
 });

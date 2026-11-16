@@ -5,7 +5,6 @@ export const formatarHoras = (horas) => {
   const horasInteiras = Math.floor(segundosTotais / 3600);
   const minutos = Math.floor((segundosTotais % 3600) / 60);
   const segundos = segundosTotais % 60;
-
   return [horasInteiras, minutos, segundos]
     .map((parte) => String(parte).padStart(2, '0'))
     .join(':');
@@ -37,12 +36,61 @@ const PlatformPanel = ({ titulo, itens = [] }) => (
   </section>
 );
 
-function HomeDashboard({ dashboard, perfil }) {
+function HomeDashboard({
+  dashboard,
+  perfil,
+  onRemoverDesejo,
+  onContinuarMonitorando,
+  processandoAlertaId = null
+}) {
   const resumo = dashboard?.resumo ?? {};
   const anos = dashboard?.zeradosPorAno ?? [];
+  const alertas = dashboard?.alertasListaDesejos ?? [];
 
   return (
     <>
+      {alertas.length > 0 && (
+        <section className="home-alerts" aria-label="Alertas da Lista de Desejos">
+          {alertas.map((alerta) => {
+            const ocupada = processandoAlertaId === alerta.desejoId;
+            return (
+              <article className="home-alert-card" key={alerta.desejoId}>
+                <div className="home-alert-content">
+                  <span className="eyebrow">JOGO JÁ NA BIBLIOTECA</span>
+                  <h2>{alerta.titulo}</h2>
+                  <p>
+                    Este jogo já está na sua Biblioteca, mas ainda possui preços monitorados na Lista de Desejos.
+                  </p>
+                  <div className="home-alert-stores">
+                    <span>Lojas ou plataformas monitoradas:</span>
+                    {(alerta.lojasMonitoradas ?? []).map((loja) => (
+                      <strong key={loja}>{loja}</strong>
+                    ))}
+                  </div>
+                </div>
+                <div className="home-alert-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={ocupada}
+                    onClick={() => onContinuarMonitorando?.(alerta)}
+                  >
+                    Continuar monitorando
+                  </button>
+                  <button
+                    type="button"
+                    disabled={ocupada}
+                    onClick={() => onRemoverDesejo?.(alerta)}
+                  >
+                    Remover da Lista de Desejos
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
       <section className="dashboard-profile">
         <div className="profile-card">
           {perfil.fotoDataUrl

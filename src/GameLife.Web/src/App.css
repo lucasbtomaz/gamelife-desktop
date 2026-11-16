@@ -2439,3 +2439,320 @@ button:disabled {
   border-radius: 2px;
   background: linear-gradient(to top, #8b5cf6, #ec4899);
 }
+
+
+/* =================================================== */
+/* ASSINATURAS, FORMAS DE ACESSO & ALERTAS DA INICIAL  */
+/* =================================================== */
+.wishlist-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.compact-action-btn {
+  width: auto;
+  height: auto;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ddd6fe;
+  background: rgba(139, 92, 246, 0.16);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  box-shadow: none;
+}
+
+.compact-action-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.3);
+  color: #fff;
+  box-shadow: none;
+}
+
+.subscription-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.subscription-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(6, 182, 212, 0.14);
+  border: 1px solid rgba(6, 182, 212, 0.32);
+  color: #a5f3fc;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.subscription-badge.sub-anunciado {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.32);
+  color: #fde68a;
+}
+
+.subscription-badge.sub-encerrado {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+}
+
+.badge-icon-btn {
+  width: auto;
+  height: auto;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  box-shadow: none;
+}
+
+.badge-icon-btn:hover:not(:disabled) {
+  transform: none;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+
+.badge-icon-btn.danger {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.badge-icon-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.28);
+  color: #fff;
+}
+
+/* Modal de assinatura */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(4, 7, 15, 0.78);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 460px;
+  background: #0f172a;
+  border: 1px solid var(--line-strong);
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-head h2 {
+  margin: 4px 0 0;
+  font: 700 20px 'Manrope', sans-serif;
+  color: #fff;
+}
+
+.modal-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: #cbd5e1;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+.modal-form input,
+.modal-form select {
+  padding-left: 14px;
+}
+
+.modal-actions,
+.subscription-subform-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions button,
+.subscription-subform-actions button {
+  width: auto;
+  height: 42px;
+  padding-inline: 18px;
+}
+
+.secondary-button {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line-strong);
+  color: #e2e8f0;
+  box-shadow: none;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+/* Badges de acesso na Biblioteca */
+.access-modes-group {
+  margin-top: 8px;
+}
+
+.access-modes-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.library-access-badges,
+.library-shared-subscriptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.library-shared-subscriptions {
+  margin-bottom: 12px;
+}
+
+.access-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.access-badge.access-digital {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.16);
+  border-color: rgba(139, 92, 246, 0.32);
+}
+
+.access-badge.access-physical {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.32);
+}
+
+.access-badge.access-subscription {
+  color: #67e8f9;
+  background: rgba(6, 182, 212, 0.16);
+  border-color: rgba(6, 182, 212, 0.34);
+}
+
+.library-subscriptions-box .subscription-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.subscription-subform {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(11, 16, 27, 0.65);
+  border: 1px solid var(--line);
+}
+
+.subscription-subform input,
+.subscription-subform select {
+  padding-left: 12px;
+}
+
+.subscription-subform-actions {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+/* Alertas da Tela Inicial */
+.home-alerts {
+  max-width: 1200px;
+  margin: 0 auto 24px;
+  display: grid;
+  gap: 14px;
+}
+
+.home-alert-card {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(6, 182, 212, 0.1));
+  border: 1px solid rgba(139, 92, 246, 0.42);
+  border-radius: 18px;
+  padding: 20px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.home-alert-content h2 {
+  margin: 4px 0 6px;
+  font: 700 18px 'Manrope', sans-serif;
+  color: #fff;
+}
+
+.home-alert-content p {
+  margin: 0 0 10px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.home-alert-stores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.home-alert-stores strong {
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--line-strong);
+  color: #e2e8f0;
+}
+
+.home-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-alert-actions button {
+  width: auto;
+  height: 40px;
+  padding-inline: 16px;
+}

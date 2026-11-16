@@ -182,17 +182,116 @@ public sealed class BibliotecaEndpointsTests : IClassFixture<GameLifeApiFactory>
     private Task<HttpResponseMessage> Cadastrar(string titulo, params object[] plataformas) =>
         _client.PostAsJsonAsync("/biblioteca", new { titulo, plataformas });
 
+    [Fact]
+    public async Task CadastraJogoExclusivoPorAssinaturaEMantemCompraSimultanea()
+    {
+        var titulo = $"Assinatura e Compra {Guid.NewGuid()}";
+        var somenteAssinatura = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[]
+            {
+                new
+                {
+                    plataforma = "XBOX",
+                    compraDigital = false,
+                    midiaFisica = false,
+                    porAssinatura = true
+                }
+            },
+            assinaturas = new[]
+            {
+                new
+                {
+                    servico = "Game Pass",
+                    situacao = "Disponível",
+                    dataDisponibilidade = "2026-10-01"
+                }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.Created, somenteAssinatura.StatusCode);
+        var criado = await somenteAssinatura.Content.ReadFromJsonAsync<JogoBibliotecaResponse>();
+        var xboxInicial = Assert.Single(criado!.Plataformas);
+        Assert.False(xboxInicial.CompraDigital);
+        Assert.False(xboxInicial.MidiaFisica);
+        Assert.True(xboxInicial.PorAssinatura);
+        Assert.Single(criado.Assinaturas, item => item.Servico == "Game Pass" && item.Situacao == "Disponível");
+
+        // Depois comprou versão digital mantendo a assinatura anterior
+        var compradoDepois = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[]
+            {
+                new
+                {
+                    plataforma = "XBOX",
+                    compraDigital = true,
+                    midiaFisica = false,
+                    porAssinatura = true
+                }
+            },
+            assinaturas = new[]
+            {
+                new
+                {
+                    servico = "Game Pass",
+                    situacao = "Encerrado",
+                    dataDisponibilidade = "2026-10-01",
+                    dataEncerramento = "2026-11-10"
+                }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, compradoDepois.StatusCode);
+        var atualizado = await compradoDepois.Content.ReadFromJsonAsync<JogoBibliotecaResponse>();
+        var xboxAtualizado = Assert.Single(atualizado!.Plataformas);
+        Assert.True(xboxAtualizado.CompraDigital);
+        Assert.True(xboxAtualizado.PorAssinatura);
+        Assert.Single(atualizado.Assinaturas, item => item.Servico == "Game Pass" && item.Situacao == "Encerrado");
+    }
+
+    [Fact]
+    public async Task RejeitaPlataformaSemNenhumaFormaDeAcesso()
+    {
+        var titulo = $"Sem acesso {Guid.NewGuid()}";
+        var response = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[]
+            {
+                new { plataforma = "PC", compraDigital = false, midiaFisica = false, porAssinatura = false }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
+        Assert.Contains("forma de acesso", problem!.Detail, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed record JogoBibliotecaResponse(
         int JogoId,
         string Titulo,
         int? AnoLancamento,
-        List<PlataformaBibliotecaResponse> Plataformas);
+        List<PlataformaBibliotecaResponse> Plataformas,
+        List<AssinaturaBibliotecaResponse> Assinaturas);
+
+    private sealed record AssinaturaBibliotecaResponse(
+        int Id,
+        int JogoId,
+        string Servico,
+        string Situacao,
+        DateTime? DataDisponibilidade,
+        DateTime? DataEncerramento);
 
     private sealed record PlataformaBibliotecaResponse(
         int PosseId,
         int CanalId,
         string Nome,
+        bool CompraDigital,
         bool MidiaFisica,
+        bool PorAssinatura,
         AcompanhamentoBibliotecaResponse? Acompanhamento);
 
     private sealed record AcompanhamentoBibliotecaResponse(

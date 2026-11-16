@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { vi } from 'vitest';
 import HomeDashboard from './HomeDashboard.jsx';
 
 const dashboard = {
@@ -32,7 +33,6 @@ const perfil = { nome: 'Lucas', fotoDataUrl: null, exibirJogosRecentes: true };
 
 test('apresenta o resumo vivo com plataformas e anos', () => {
   render(<HomeDashboard dashboard={dashboard} perfil={perfil} />);
-
   expect(within(screen.getByText('Tempo na plataforma').closest('article')).getByText('6 anos')).toBeInTheDocument();
   expect(within(screen.getByText('Jogos zerados').closest('article')).getByText('82')).toBeInTheDocument();
   expect(within(screen.getByText('Horas de zerados').closest('article')).getByText('31:30:00')).toBeInTheDocument();
@@ -40,7 +40,6 @@ test('apresenta o resumo vivo com plataformas e anos', () => {
   expect(within(screen.getByText('Conquistas possíveis').closest('article')).getByText('4299')).toBeInTheDocument();
   expect(within(screen.getByText('Conquistas obtidas').closest('article')).getByText('2971')).toBeInTheDocument();
   expect(within(screen.getByText('Percentual de conquistas').closest('article')).getByText('69,11%')).toBeInTheDocument();
-
   expect(screen.getByRole('heading', { name: 'Jogos zerados por plataforma' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Jogos na biblioteca por plataforma' })).toBeInTheDocument();
   expect(screen.getAllByText('PSN')).toHaveLength(2);
@@ -50,4 +49,39 @@ test('apresenta o resumo vivo com plataformas e anos', () => {
   expect(gradeAnual).toHaveStyle({ gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))' });
   expect(screen.getByText('2024')).toBeInTheDocument();
   expect(screen.getByText('2025')).toBeInTheDocument();
+});
+
+test('mostra alerta na tela inicial para jogo na biblioteca com preço monitorado e ações', () => {
+  const onRemoverDesejo = vi.fn();
+  const onContinuarMonitorando = vi.fn();
+
+  render(
+    <HomeDashboard
+      dashboard={{
+        ...dashboard,
+        alertasListaDesejos: [
+          {
+            desejoId: 9,
+            jogoId: 42,
+            titulo: 'Hollow Knight',
+            lojasMonitoradas: ['NUUVEM', 'STEAM']
+          }
+        ]
+      }}
+      perfil={perfil}
+      onRemoverDesejo={onRemoverDesejo}
+      onContinuarMonitorando={onContinuarMonitorando}
+    />
+  );
+
+  const regiaoAlertas = screen.getByRole('region', { name: 'Alertas da Lista de Desejos' });
+  expect(within(regiaoAlertas).getByRole('heading', { name: 'Hollow Knight' })).toBeInTheDocument();
+  expect(within(regiaoAlertas).getByText('NUUVEM')).toBeInTheDocument();
+  expect(within(regiaoAlertas).getByText('STEAM')).toBeInTheDocument();
+
+  fireEvent.click(within(regiaoAlertas).getByRole('button', { name: 'Continuar monitorando' }));
+  expect(onContinuarMonitorando).toHaveBeenCalledWith(expect.objectContaining({ desejoId: 9 }));
+
+  fireEvent.click(within(regiaoAlertas).getByRole('button', { name: 'Remover da Lista de Desejos' }));
+  expect(onRemoverDesejo).toHaveBeenCalledWith(expect.objectContaining({ desejoId: 9 }));
 });

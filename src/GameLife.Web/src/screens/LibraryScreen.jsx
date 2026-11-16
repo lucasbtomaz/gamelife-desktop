@@ -1,32 +1,40 @@
 import { useMemo, useState } from 'react';
+import { formatarBadgeAssinatura } from '../api/assinaturas.js';
 
-const statusLabels = {
-  Zerado: 'Zerado',
-  Dropado: 'Dropado',
-  NaoTerminado: 'Em andamento'
+const normalize = (value) => (value ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const formatHours = (hours) => hours == null ? 'Não informado' : `${Number(hours).toLocaleString('pt-BR')} h`;
+const formatAchievements = (tracking) => tracking?.conquistasPossiveis == null
+  ? 'Não informado'
+  : `${tracking.conquistasObtidas ?? 0} / ${tracking.conquistasPossiveis}`;
+const statusLabels = { Zerado: 'Zerado', Dropado: 'Dropado', NaoTerminado: 'Em andamento' };
+const cardHue = (title) => [...(title ?? '')].reduce((total, char) => total + char.charCodeAt(0), 0) % 360;
+
+const badgesDeAcesso = (entry, assinaturas) => {
+  const badges = [];
+  const compraDigital = entry.compraDigital ?? (!entry.midiaFisica && !entry.porAssinatura);
+  if (compraDigital) {
+    badges.push({ chave: 'compra-digital', rotulo: 'Compra digital', classe: 'access-digital' });
+  }
+  if (entry.midiaFisica) {
+    badges.push({ chave: 'midia-fisica', rotulo: 'Mídia física', classe: 'access-physical' });
+  }
+  if (entry.porAssinatura) {
+    if (assinaturas.length > 0) {
+      for (const assinatura of assinaturas) {
+        badges.push({
+          chave: `assinatura-${assinatura.servico}`,
+          rotulo: formatarBadgeAssinatura(assinatura),
+          classe: 'access-subscription'
+        });
+      }
+    } else {
+      badges.push({ chave: 'assinatura', rotulo: 'Assinatura', classe: 'access-subscription' });
+    }
+  }
+  return badges;
 };
 
-function normalize(value) {
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('pt-BR');
-}
-
-function cardHue(value) {
-  return [...value].reduce((total, character) => total + character.codePointAt(0), 0) % 360;
-}
-
-function formatHours(value) {
-  return value == null ? 'Não informado' : `${Number(value).toLocaleString('pt-BR')} h`;
-}
-
-function formatAchievements(tracking) {
-  if (tracking?.conquistasPossiveis == null || tracking?.conquistasObtidas == null) return 'Não informado';
-  return `${tracking.conquistasObtidas} / ${tracking.conquistasPossiveis}`;
-}
-
-export default function LibraryScreen({ items = [], loading = false, onEdit }) {
+export default function LibraryScreen({ items, loading, onEdit }) {
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState('Todas');
   const [physicalOnly, setPhysicalOnly] = useState(false);
@@ -72,49 +80,72 @@ export default function LibraryScreen({ items = [], loading = false, onEdit }) {
     {loading ? <div className="library-card-empty">Carregando biblioteca...</div> :
       filteredGames.length === 0 ? <div className="library-card-empty">Nenhum jogo encontrado com esses filtros.</div> :
         <div className="library-card-grid">
-          {filteredGames.map((game) => <article
-            className="library-game-card library-game-record"
-            key={game.jogoId}
-            style={{ '--card-hue': cardHue(game.titulo) }}
-          >
-            <div className="library-card-cover">
-              <div className="library-card-tags">
-                <span>{game.anoLancamento ?? 'Ano não informado'}</span>
-                <span>{game.visiblePlatforms.length} {game.visiblePlatforms.length === 1 ? 'plataforma' : 'plataformas'}</span>
+          {filteredGames.map((game) => {
+            const assinaturas = game.assinaturas ?? [];
+            const algumaPlataformaPorAssinatura = game.visiblePlatforms.some((entry) => entry.porAssinatura);
+            return <article
+              className="library-game-card library-game-record"
+              key={game.jogoId}
+              style={{ '--card-hue': cardHue(game.titulo) }}
+            >
+              <div className="library-card-cover">
+                <div className="library-card-tags">
+                  <span>{game.anoLancamento ?? 'Ano não informado'}</span>
+                  <span>{game.visiblePlatforms.length} {game.visiblePlatforms.length === 1 ? 'plataforma' : 'plataformas'}</span>
+                </div>
+                <h2>{game.titulo}</h2>
               </div>
-              <h2>{game.titulo}</h2>
-            </div>
 
-            <div className="library-platform-list">
-              {game.visiblePlatforms.map((entry) => <section
-                className="library-platform-entry"
-                role="group"
-                aria-label={entry.nome}
-                key={entry.posseId}
-              >
-                <div className="library-platform-head">
-                  <strong>{entry.nome}</strong>
-                  <span className="library-platform-media">{entry.midiaFisica ? 'Mídia física' : 'Digital'}</span>
+              {!algumaPlataformaPorAssinatura && assinaturas.length > 0 && (
+                <div className="library-shared-subscriptions" aria-label={`Assinaturas de ${game.titulo}`}>
+                  {assinaturas.map((assinatura) => (
+                    <span key={assinatura.servico} className="access-badge access-subscription">
+                      {formatarBadgeAssinatura(assinatura)}
+                    </span>
+                  ))}
                 </div>
-                <div className="library-card-metrics">
-                  <div><span>Horas</span><strong>{formatHours(entry.acompanhamento?.tempoEmHoras)}</strong></div>
-                  <div><span>Conquistas</span><strong>{formatAchievements(entry.acompanhamento)}</strong></div>
-                </div>
-                <div className="library-card-footer">
-                  <span className={`library-status status-${entry.acompanhamento?.status ?? 'SemAcompanhamento'}`}>
-                    {statusLabels[entry.acompanhamento?.status] ?? 'Sem acompanhamento'}
-                  </span>
-                </div>
-              </section>)}
-            </div>
-            {onEdit && <div className="library-game-actions">
-              <button
-                type="button"
-                aria-label={`Editar ${game.titulo}`}
-                onClick={() => onEdit(items.find((item) => item.jogoId === game.jogoId) ?? game)}
-              >Editar ficha</button>
-            </div>}
-          </article>)}
+              )}
+
+              <div className="library-platform-list">
+                {game.visiblePlatforms.map((entry) => {
+                  const accessBadges = badgesDeAcesso(entry, assinaturas);
+                  return <section
+                    className="library-platform-entry"
+                    role="group"
+                    aria-label={entry.nome}
+                    key={entry.posseId}
+                  >
+                    <div className="library-platform-head">
+                      <strong>{entry.nome}</strong>
+                      <div className="library-access-badges">
+                        {accessBadges.map((badge) => (
+                          <span key={badge.chave} className={`access-badge ${badge.classe}`}>
+                            {badge.rotulo}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="library-card-metrics">
+                      <div><span>Horas</span><strong>{formatHours(entry.acompanhamento?.tempoEmHoras)}</strong></div>
+                      <div><span>Conquistas</span><strong>{formatAchievements(entry.acompanhamento)}</strong></div>
+                    </div>
+                    <div className="library-card-footer">
+                      <span className={`library-status status-${entry.acompanhamento?.status ?? 'SemAcompanhamento'}`}>
+                        {statusLabels[entry.acompanhamento?.status] ?? 'Sem acompanhamento'}
+                      </span>
+                    </div>
+                  </section>;
+                })}
+              </div>
+              {onEdit && <div className="library-game-actions">
+                <button
+                  type="button"
+                  aria-label={`Editar ${game.titulo}`}
+                  onClick={() => onEdit(items.find((item) => item.jogoId === game.jogoId) ?? game)}
+                >Editar ficha</button>
+              </div>}
+            </article>;
+          })}
         </div>}
   </section>;
 }
