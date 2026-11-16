@@ -67,7 +67,7 @@ public sealed class AssinaturasEndpointsTests : IClassFixture<GameLifeApiFactory
                 new { plataforma = "PC", compraDigital = true, midiaFisica = false, porAssinatura = false }
             }
         });
-        Assert.Equal(HttpStatusCode.Created, bibliotecaResp.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, bibliotecaResp.StatusCode);
         var jogoBiblioteca = await bibliotecaResp.Content.ReadFromJsonAsync<JogoBibliotecaResumo>();
         Assert.Equal(2, jogoBiblioteca!.Assinaturas.Count);
         Assert.Contains(jogoBiblioteca.Assinaturas, item => item.Servico == "Game Pass" && item.Situacao == "Disponível");

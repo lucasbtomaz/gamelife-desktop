@@ -14,6 +14,9 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
     public DashboardResumoEndpointsTests(GameLifeApiFactory factory)
     {
         _factory = factory;
+        using var scope = factory.Services.CreateScope();
+        var contexto = scope.ServiceProvider.GetRequiredService<GameLifeDbContext>();
+        contexto.Database.EnsureDeleted();
         _client = factory.CreateClient();
     }
 
