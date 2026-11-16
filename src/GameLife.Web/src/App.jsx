@@ -3,8 +3,10 @@ import './App.css';
 import HomeDashboard from './components/HomeDashboard.jsx';
 import WishlistScreen from './screens/WishlistScreen.jsx';
 import GameTrackingScreen from './screens/GameTrackingScreen.jsx';
+import LibraryScreen from './screens/LibraryScreen.jsx';
 import LibraryProgressSummary from './components/LibraryProgressSummary.jsx';
 import PainelRetrospectiva from './components/PainelRetrospectiva.jsx';
+import LibraryGameScreen from './screens/LibraryGameScreen.jsx';
 
 const plataformas = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'AMAZON PRIME', 'BLIZZARD', 'EA', 'NINTENDO', 'PSN', 'UBISOFT', 'XBOX', 'PLAY STORE', 'Outra'];
 
@@ -24,36 +26,35 @@ function App() {
   const [colecoes, setColecoes] = useState([]);
   const [nomeColecao, setNomeColecao] = useState('');
   const [descricaoColecao, setDescricaoColecao] = useState('');
-  const [titulo, setTitulo] = useState('');
-  const [plataforma, setPlataforma] = useState('');
-  const [midiaFisica, setMidiaFisica] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
+  const [jogoEmEdicao, setJogoEmEdicao] = useState(null);
+  const [modoBiblioteca, setModoBiblioteca] = useState(null);
   const [resumoProgresso, setResumoProgresso] = useState({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 });
-  const [busca, setBusca] = useState('');
-
   const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
 
-  // Função para normalizar título para comparação anti-duplicidade
-  const normalizarTitulo = (str) => {
-    if (!str) return '';
-    return str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/['’`"]/g, '')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+  const carregarDashboard = async () => {
+    const resposta = await fetch('/api/dashboard/inicio');
+    if (!resposta.ok) throw new Error();
+    const dados = await resposta.json();
+    setDashboard(dados);
+    if (dados.perfil) setPerfil(dados.perfil);
+    return dados;
+  };
+
+  const carregarResumoProgresso = async () => {
+    const resposta = await fetch('/api/acompanhamentos-jogos/resumo');
+    if (!resposta.ok) throw new Error();
+    const resumo = await resposta.json();
+    setResumoProgresso(resumo);
+    return resumo;
   };
 
   useEffect(() => {
     if (tela !== 'inicio') return;
     setErroDashboard(false);
-    fetch('/api/dashboard/inicio')
-      .then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
-      .then((dados) => { setDashboard(dados); if (dados.perfil) setPerfil(dados.perfil); })
+    carregarDashboard()
       .catch(() => { setDashboard(null); setErroDashboard(true); });
   }, [tela]);
 
@@ -61,8 +62,7 @@ function App() {
     if (tela !== 'biblioteca' && tela !== 'colecoes') return;
     const carregarBiblioteca = async () => {
       try {
-        const query = busca.trim() ? `?search=${encodeURIComponent(busca.trim())}` : '';
-        const resposta = await fetch(`/biblioteca${query}`);
+        const resposta = await fetch('/biblioteca');
         if (!resposta.ok) throw new Error();
         setItens(await resposta.json());
       } catch {
@@ -71,14 +71,11 @@ function App() {
         setCarregando(false);
       }
     };
+
     carregarBiblioteca();
-    if (!busca) {
-      fetch('/api/acompanhamentos-jogos/resumo')
-        .then((resposta) => resposta.ok ? resposta.json() : Promise.reject())
-        .then(setResumoProgresso)
-        .catch(() => setMensagem({ tipo: 'erro', texto: 'A Biblioteca foi carregada, mas o resumo de progresso não está disponível.' }));
-    }
-  }, [tela, busca]);
+    carregarResumoProgresso()
+      .catch(() => setMensagem({ tipo: 'erro', texto: 'A Biblioteca foi carregada, mas o resumo de progresso não está disponível.' }));
+  }, [tela]);
 
   useEffect(() => {
     if (tela !== 'colecoes') return;
@@ -94,49 +91,66 @@ function App() {
       .finally(() => setCarregandoPerfil(false));
   }, [tela]);
 
-  const adicionarJogo = async (evento) => {
-    evento.preventDefault();
+  const salvarJogo = async (payload, editando = false) => {
     setMensagem(null);
-    const tituloLimpo = titulo.trim();
-    if (!tituloLimpo || !plataforma) {
-      setMensagem({ tipo: 'erro', texto: 'Preencha o nome do jogo e escolha uma plataforma.' });
-      return;
-    }
-
-    // Validação de duplicidade:
-    // Deve aceitar edições como "Remastered" ou "Remake", mas não diferenças de maiúsculas/minúsculas ou pontuações como jogo diferente
-    // Ex aceito: God of War III Remastered e God of War III
-    // Ex não deve aceitar: God of War III e god of war III
-    const normalizado = normalizarTitulo(tituloLimpo);
-    const duplicado = itens.find((item) => normalizarTitulo(item.titulo) === normalizado);
-
-    if (duplicado) {
-      setMensagem({
-        tipo: 'erro',
-        texto: `O jogo "${duplicado.titulo}" já está cadastrado. Variações apenas de maiúsculas/minúsculas, espaços ou pontuação não são permitidas.`
-      });
-      return;
-    }
-
     setSalvando(true);
     try {
       const resposta = await fetch('/biblioteca', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulo: tituloLimpo, plataforma, midiaFisica })
+        body: JSON.stringify(payload)
       });
+
       const conteudo = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) throw new Error(conteudo.detail || 'Não foi possível adicionar o jogo.');
-      setItens((atuais) => [...atuais, { ...conteudo, midiaFisica }].sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR')));
-      setTitulo('');
-      setPlataforma('');
-      setMidiaFisica(false);
-      setMensagem({ tipo: 'sucesso', texto: `${conteudo.titulo} foi adicionado à sua biblioteca.` });
+      if (!resposta.ok) throw new Error(conteudo.detail || 'Não foi possível salvar o jogo.');
+
+      setItens((atuais) => {
+        const demais = atuais.filter((item) => item.jogoId !== conteudo.jogoId);
+        return [...demais, conteudo].sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'));
+      });
+      await Promise.allSettled([
+        carregarResumoProgresso(),
+        carregarDashboard()
+      ]);
+      setMensagem({
+        tipo: 'sucesso',
+        texto: editando
+          ? `${conteudo.titulo} foi atualizado na sua biblioteca.`
+          : `${conteudo.titulo} foi adicionado à sua biblioteca.`
+      });
+      return conteudo;
     } catch (erro) {
       setMensagem({ tipo: 'erro', texto: erro.message });
+      throw erro;
     } finally {
       setSalvando(false);
     }
+  };
+
+  const abrirEdicao = (jogo) => {
+    setJogoEmEdicao(jogo);
+    setModoBiblioteca('editar');
+    setMensagem(null);
+  };
+
+  const abrirCadastro = () => {
+    setJogoEmEdicao(null);
+    setModoBiblioteca('adicionar');
+    setMensagem(null);
+  };
+
+  const voltarParaBiblioteca = () => {
+    setJogoEmEdicao(null);
+    setModoBiblioteca(null);
+    setMensagem(null);
+  };
+
+  const enviarJogo = async (payload) => {
+    const editando = Boolean(jogoEmEdicao);
+    const salvo = await salvarJogo(payload, editando);
+    setJogoEmEdicao(null);
+    setModoBiblioteca(null);
+    return salvo;
   };
 
   const criarColecao = async (evento) => {
@@ -152,10 +166,11 @@ function App() {
   const adicionarNaColecao = async (colecaoId, jogoId) => {
     if (!jogoId) return;
     try {
-      const resposta = await fetch(`/api/colecoes/${colecaoId}/jogos/${jogoId}`, { method: 'POST' });
+      const resposta = await fetch(`/api/colecoes/${colecaoId}/jogos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jogoId: Number(jogoId) }) });
       if (!resposta.ok) throw new Error();
-      const atualizada = await resposta.json();
-      setColecoes((atuais) => atuais.map((item) => item.id === atualizada.id ? atualizada : item));
+      const jogo = itens.find((item) => item.jogoId === Number(jogoId));
+      setColecoes((atuais) => atuais.map((item) => item.id === colecaoId ? { ...item, jogos: [...item.jogos, { id: Number(jogoId), titulo: jogo?.titulo }] } : item));
+      setMensagem(null);
     } catch { setMensagem({ tipo: 'erro', texto: 'Não foi possível adicionar o jogo à coleção.' }); }
   };
 
@@ -183,18 +198,38 @@ function App() {
           <span className="brand-mark"><Icon size={25}><path d="M7 6h10l3 9a2.3 2.3 0 0 1-4 2l-2-2h-4l-2 2a2.3 2.3 0 0 1-4-2z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></Icon></span>
           <span>Game<span>Life</span></span>
         </button>
+
         <nav aria-label="Menu principal">
-          <button className={`nav-item ${tela === 'inicio' ? 'active' : ''}`} onClick={() => setTela('inicio')}>⌂ Início</button>
-          <button className={`nav-item ${tela === 'biblioteca' ? 'active' : ''}`} onClick={() => setTela('biblioteca')}>
+          <button className={`nav-item ${tela === 'inicio' ? 'active' : ''}`} onClick={() => setTela('inicio')}>
+            <Icon><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></Icon>
+            Início
+          </button>
+          <button className={`nav-item ${tela === 'biblioteca' ? 'active' : ''}`} onClick={() => { setTela('biblioteca'); setModoBiblioteca(null); setJogoEmEdicao(null); }}>
             <Icon><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></Icon>
             Biblioteca
           </button>
-          <button className={`nav-item ${tela === 'lista-desejos' ? 'active' : ''}`} onClick={() => setTela('lista-desejos')}>♡ Lista de Desejos</button>
-          <button className={`nav-item ${tela === 'jogos-concluidos' ? 'active' : ''}`} onClick={() => setTela('jogos-concluidos')}>✓ Jogos concluídos</button>
-          <button className={`nav-item ${tela === 'retrospectiva' ? 'active' : ''}`} onClick={() => setTela('retrospectiva')}>🎧 Retrospectiva</button>
-          <button className={`nav-item ${tela === 'colecoes' ? 'active' : ''}`} onClick={() => setTela('colecoes')}>▦ Coleções</button>
-          <button className={`nav-item ${tela === 'configuracoes' ? 'active' : ''}`} onClick={() => setTela('configuracoes')}>⚙ Configurações</button>
+          <button className={`nav-item ${tela === 'lista-desejos' ? 'active' : ''}`} onClick={() => setTela('lista-desejos')}>
+            <Icon><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></Icon>
+            Lista de Desejos
+          </button>
+          <button className={`nav-item ${tela === 'jogos-concluidos' ? 'active' : ''}`} onClick={() => setTela('jogos-concluidos')}>
+            <Icon><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></Icon>
+            Jogos concluídos
+          </button>
+          <button className={`nav-item ${tela === 'retrospectiva' ? 'active' : ''}`} onClick={() => setTela('retrospectiva')}>
+            <Icon><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/></Icon>
+            Retrospectiva
+          </button>
+          <button className={`nav-item ${tela === 'colecoes' ? 'active' : ''}`} onClick={() => setTela('colecoes')}>
+            <Icon><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></Icon>
+            Coleções
+          </button>
+          <button className={`nav-item ${tela === 'configuracoes' ? 'active' : ''}`} onClick={() => setTela('configuracoes')}>
+            <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></Icon>
+            Configurações
+          </button>
         </nav>
+
         <div className="sidebar-footer">
           {perfil.fotoDataUrl ? <img className="avatar profile-photo" src={perfil.fotoDataUrl} alt="Foto do perfil" /> : <span className="avatar">{perfil.nome?.slice(0, 2).toUpperCase()}</span>}
           <span><strong>{perfil.nome || 'Jogador'}</strong><small>{totalJogosPerfil} {totalJogosPerfil === 1 ? 'jogo' : 'jogos'}</small></span>
@@ -207,113 +242,35 @@ function App() {
         <HomeDashboard dashboard={dashboard} perfil={perfil} />
       </main>}
 
-      {tela === 'biblioteca' && <main id="biblioteca">
+      {tela === 'biblioteca' && modoBiblioteca && <LibraryGameScreen
+        game={modoBiblioteca === 'editar' ? jogoEmEdicao : null}
+        platforms={plataformas}
+        saving={salvando}
+        onSubmit={enviarJogo}
+        onBack={voltarParaBiblioteca}
+        message={mensagem}
+      />}
+
+      {tela === 'biblioteca' && !modoBiblioteca && <main id="biblioteca">
         <header className="page-header">
           <div>
             <span className="eyebrow">SUA COLEÇÃO</span>
-            <h1>Biblioteca</h1>
+            <h1>Minha Biblioteca de Jogos</h1>
             <p>Organize os jogos que fazem parte da sua história.</p>
           </div>
           <div className="collection-count"><strong>{itens.length}</strong><span>{itens.length === 1 ? 'jogo na coleção' : 'jogos na coleção'}</span></div>
         </header>
-        <LibraryProgressSummary summary={resumoProgresso} />
-        <section className="content-grid">
-          <div className="form-card">
-            <div className="card-heading">
-              <span className="heading-icon"><Icon><path d="M12 5v14M5 12h14"/></Icon></span>
-              <div><h2>Adicionar novo jogo</h2><p>Cadastre um jogo na sua coleção.</p></div>
-            </div>
-            <form onSubmit={adicionarJogo}>
-              <label htmlFor="titulo">Nome do jogo</label>
-              <div className="input-wrap">
-                <Icon><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></Icon>
-                <input id="titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength="200" placeholder="Ex.: The Legend of Zelda" autoComplete="off" />
-              </div>
-              <label htmlFor="plataforma">Plataforma</label>
-              <div className="select-wrap">
-                <Icon><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></Icon>
-                <select id="plataforma" value={plataforma} onChange={(e) => setPlataforma(e.target.value)}>
-                  <option value="" disabled>Selecione uma plataforma</option>
-                  {plataformas.map((item) => <option key={item}>{item}</option>)}
-                </select>
-              </div>
-              <label className={`media-type ${midiaFisica ? 'selected' : ''}`} htmlFor="midia-fisica">
-                <span className="disc-icon"><Icon size={22}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3a9 9 0 0 1 9 9"/></Icon></span>
-                <span><strong>Mídia física</strong><small>Marque se você possui uma cópia física deste jogo.</small></span>
-                <input id="midia-fisica" aria-label="Mídia física" className="media-checkbox" type="checkbox" checked={midiaFisica} onChange={(e) => setMidiaFisica(e.target.checked)} />
-                <span className="check" aria-hidden="true">{midiaFisica && <Icon size={15}><path d="m4 8 3 3 5-6"/></Icon>}</span>
-              </label>
-              {mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}
-              <button type="submit" disabled={salvando}>
-                {salvando ? 'Adicionando...' : 'Adicionar à biblioteca'}
-                {!salvando && <Icon><path d="M5 12h14M13 6l6 6-6 6"/></Icon>}
-              </button>
-            </form>
-          </div>
 
-          <section className="library-panel" aria-labelledby="meus-jogos">
-            <div className="library-heading">
-              <div>
-                <span className="eyebrow">COLEÇÃO ATUAL</span>
-                <h2 id="meus-jogos">Meus jogos</h2>
-              </div>
-              <span className="pill">BIBLIOTECA</span>
-            </div>
-
-            {/* Campo de Busca em Tempo Real da Coleção (?search=) */}
-            <div className="library-search-wrap">
-              <span className="search-icon"><Icon size={16}><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></Icon></span>
-              <input
-                id="busca-biblioteca"
-                type="text"
-                aria-label="Buscar títulos na coleção"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar jogos na coleção por título..."
-                autoComplete="off"
-              />
-              {busca && (
-                <button
-                  type="button"
-                  onClick={() => setBusca('')}
-                  className="clear-search-btn"
-                  aria-label="Limpar busca"
-                  title="Limpar busca"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {carregando ? (
-              <div className="empty-state"><span className="loader"/><h3>Carregando coleção...</h3></div>
-            ) : itens.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-illustration"><Icon size={50}><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></Icon></span>
-                <h3>{busca ? `Nenhum jogo encontrado para "${busca}"` : 'Sua estante está esperando'}</h3>
-                <p>{busca ? 'Tente buscar com outro termo ou limpe o campo.' : 'Adicione seu primeiro jogo usando o formulário ao lado.'}</p>
-                {busca && (
-                  <button type="button" onClick={() => setBusca('')} className="btn-clean-filter">
-                    Limpar filtro
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="game-list">
-                {itens.map((item) => (
-                  <article className="game-item" key={item.id || `${item.titulo}-${item.plataforma}`}>
-                    <span className="game-cover"><Icon size={25}><path d="M6 3h12v18H6zM9 7h6M9 11h6"/></Icon></span>
-                    <span className="game-info"><strong>{item.titulo}</strong><small>{item.plataforma}</small></span>
-                    <span className={`physical-tag ${item.midiaFisica ? '' : 'not-physical'}`}><span/>{item.midiaFisica ? 'Física' : 'Digital'}</span>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        </section>
+        <div className="library-top-actions">
+          <LibraryProgressSummary summary={resumoProgresso} />
+          <button type="button" className="library-add-button" onClick={abrirCadastro}>Adicionar jogo</button>
+        </div>
+        {mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}
+        <LibraryScreen items={itens} loading={carregando} onEdit={abrirEdicao} />
       </main>}
 
       {tela === 'lista-desejos' && <WishlistScreen />}
+
       {tela === 'jogos-concluidos' && <GameTrackingScreen />}
       {tela === 'retrospectiva' && <PainelRetrospectiva />}
 

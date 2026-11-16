@@ -1,8 +1,7 @@
-$scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'migration-preflight.ps1'
-
 Describe 'Verificação das origens da consolidação' {
     BeforeAll {
-        . $scriptPath -LibraryOnly
+        $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'migration-preflight.ps1'
+        . $script:scriptPath -LibraryOnly
     }
 
     BeforeEach {

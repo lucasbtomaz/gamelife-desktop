@@ -1,6 +1,8 @@
-$repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-
 Describe 'Estrutura do monorepositório GameLife' {
+    BeforeAll {
+        $script:repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+    }
+
     It 'mantém API, desktop, frontend e testes nos caminhos canônicos' {
         (Join-Path $repositoryRoot 'src\GameLife.Api\GameLife.Api.csproj') | Should Exist
         (Join-Path $repositoryRoot 'src\GameLife.Desktop\GameLife.Desktop.csproj') | Should Exist

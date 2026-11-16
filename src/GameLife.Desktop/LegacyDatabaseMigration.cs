@@ -1,6 +1,7 @@
 using gamelife_api.Context;
 using gamelife_api.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace GameLife.Desktop;
 
@@ -101,8 +102,62 @@ public static class LegacyDatabaseMigration
             }
         }
 
+        if (await TabelaExisteAsync(source, "AcompanhamentosJogos", cancellationToken))
+        {
+            var destinationTrackings = await destination.AcompanhamentosJogos.ToListAsync(cancellationToken);
+            foreach (var sourceTracking in await source.AcompanhamentosJogos.AsNoTracking().ToListAsync(cancellationToken))
+            {
+                var game = gameMap[sourceTracking.JogoId];
+                var channel = channelMap[sourceTracking.CanalId];
+                if (destinationTrackings.Any(item =>
+                    item.JogoId == game.Id && item.CanalId == channel.Id))
+                {
+                    continue;
+                }
+
+                ownershipMap.TryGetValue(sourceTracking.PosseJogoId ?? 0, out var ownership);
+                var tracking = new AcompanhamentoJogo
+                {
+                    JogoId = game.Id,
+                    CanalId = channel.Id,
+                    PosseJogoId = ownership?.Id,
+                    Status = sourceTracking.Status,
+                    DataStatus = sourceTracking.DataStatus,
+                    TempoEmHoras = sourceTracking.TempoEmHoras,
+                    ConquistasPossiveis = sourceTracking.ConquistasPossiveis,
+                    ConquistasObtidas = sourceTracking.ConquistasObtidas
+                };
+                destination.AcompanhamentosJogos.Add(tracking);
+                destinationTrackings.Add(tracking);
+            }
+        }
+
         await destination.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static async Task<bool> TabelaExisteAsync(
+        GameLifeDbContext context,
+        string tableName,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose) await connection.OpenAsync(cancellationToken);
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = $name";
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "$name";
+            parameter.Value = tableName;
+            command.Parameters.Add(parameter);
+            return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken)) > 0;
+        }
+        finally
+        {
+            if (shouldClose) await connection.CloseAsync();
+        }
     }
 
     public static async Task CopiarAsync(

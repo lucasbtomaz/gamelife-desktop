@@ -1,8 +1,7 @@
-$scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'install-local.ps1'
-
 Describe 'Instalação local do GameLife' {
     BeforeAll {
-        . $scriptPath -LibraryOnly
+        $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'install-local.ps1'
+        . $script:scriptPath -LibraryOnly
     }
 
     BeforeEach {

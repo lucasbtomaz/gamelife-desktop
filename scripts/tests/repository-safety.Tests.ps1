@@ -1,8 +1,7 @@
-$repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-
 Describe 'Segurança do repositório público' {
     BeforeAll {
-        $script:trackedFiles = @(& git -C $repositoryRoot ls-files)
+        $script:repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+        $script:trackedFiles = @(& git -C $script:repositoryRoot ls-files)
         if ($LASTEXITCODE -ne 0) {
             throw 'Não foi possível listar os arquivos rastreados.'
         }

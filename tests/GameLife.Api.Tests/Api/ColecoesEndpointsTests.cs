@@ -19,8 +19,7 @@ public sealed class ColecoesEndpointsTests : IClassFixture<GameLifeApiFactory>
         await _client.PostAsJsonAsync("/biblioteca", new
         {
             titulo = "Hades",
-            plataforma = "PC",
-            midiaFisica = false
+            plataformas = new[] { new { plataforma = "PC", midiaFisica = false } }
         });
         var jogos = await _client.GetFromJsonAsync<JsonElement[]>("/api/jogos?search=Hades");
         var jogoId = jogos![0].GetProperty("id").GetInt32();

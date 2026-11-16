@@ -1,4 +1,5 @@
 using gamelife_api.Context;
+using gamelife_api.Services;
 using Microsoft.EntityFrameworkCore;
 
 public static class GameLifeApplication
@@ -15,6 +16,7 @@ public static class GameLifeApplication
         });
 
         builder.Services.AddControllers();
+        builder.Services.AddScoped<BibliotecaService>();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddCors(options =>
         {

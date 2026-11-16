@@ -11,6 +11,9 @@ function Get-GameLifePublishPaths {
         WebRoot = Join-Path $ProjectRoot 'src\GameLife.Web'
         SolutionPath = Join-Path $ProjectRoot 'GameLife.slnx'
         DesktopProject = Join-Path $ProjectRoot 'src\GameLife.Desktop\GameLife.Desktop.csproj'
+        DatabaseSafetyProject = Join-Path $ProjectRoot 'tools\GameLife.DatabaseSafety\GameLife.DatabaseSafety.csproj'
+        DatabasePath = Join-Path $ProjectRoot 'data\gamelife.db'
+        DatabaseSnapshotPath = Join-Path ([IO.Path]::GetTempPath()) ("gamelife-database-snapshot-{0}.json" -f [Guid]::NewGuid().ToString('N'))
         OutputPath = Join-Path $ProjectRoot 'artifacts\GameLife'
         PublishedExecutablePath = Join-Path $ProjectRoot 'artifacts\GameLife\GameLife.exe'
     }
@@ -20,6 +23,13 @@ function Get-GameLifePublishSteps {
     param([Parameter(Mandatory)]$Paths)
 
     @(
+        [pscustomobject]@{
+            Name = 'database snapshot before'
+            WorkingDirectory = $Paths.ProjectRoot
+            Command = {
+                dotnet run --project $Paths.DatabaseSafetyProject --configuration Release -- snapshot $Paths.DatabasePath $Paths.DatabaseSnapshotPath
+            }.GetNewClosure()
+        },
         [pscustomobject]@{ Name = 'npm ci'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd ci } },
         [pscustomobject]@{ Name = 'npm test'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd test } },
         [pscustomobject]@{ Name = 'npm run build'; WorkingDirectory = $Paths.WebRoot; Command = { npm.cmd run build } },
@@ -33,6 +43,13 @@ function Get-GameLifePublishSteps {
             Command = {
                 & (Join-Path $Paths.ScriptsRoot 'create-shortcut.ps1') `
                     -ExecutablePath $Paths.PublishedExecutablePath
+            }.GetNewClosure()
+        },
+        [pscustomobject]@{
+            Name = 'database snapshot after'
+            WorkingDirectory = $Paths.ProjectRoot
+            Command = {
+                dotnet run --project $Paths.DatabaseSafetyProject --configuration Release --no-build -- verify $Paths.DatabasePath $Paths.DatabaseSnapshotPath
             }.GetNewClosure()
         }
     )

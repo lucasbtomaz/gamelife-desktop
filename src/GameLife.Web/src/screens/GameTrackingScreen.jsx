@@ -3,7 +3,7 @@ import { createGameTracking, deleteGameTracking, listGameTrackings, updateGameTr
 
 const platforms = ['PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'PC', 'STEAM', 'EPIC', 'Amazon Luna', 'GOG', 'AMAZON PRIME', 'BLIZZARD', 'EA', 'NINTENDO', 'PSN', 'UBISOFT', 'XBOX', 'PLAY STORE', 'Outra'];
 const emptyForm = { titulo: '', plataforma: '', status: 'NaoTerminado', dataStatus: '', tempoEmHoras: '', conquistasPossiveis: '', conquistasObtidas: '', adicionarBiblioteca: false };
-const statusLabels = { NaoTerminado: 'Não terminado', Zerado: 'Zerado', Dropado: 'Dropado' };
+const statusLabels = { NaoTerminado: 'Em andamento', Zerado: 'Zerado', Dropado: 'Dropado' };
 
 function dateLabel(status) {
   if (status === 'Zerado') return 'Data da conclusão';
@@ -84,7 +84,7 @@ export default function GameTrackingScreen() {
   };
 
   const remove = async (item) => {
-    if (!window.confirm(`Excluir o acompanhamento de ${item.titulo}?`)) return;
+    if (!window.confirm(`Excluir o acompanhamento de ${item.titulo} em ${item.plataforma}?`)) return;
     try {
       await deleteGameTracking(item.id);
       setItems((current) => current.filter((candidate) => candidate.id !== item.id));
@@ -93,6 +93,14 @@ export default function GameTrackingScreen() {
       setMessage({ type: 'erro', text: error.message });
     }
   };
+
+  const groupedItems = Array.from(items.reduce((groups, item) => {
+    const key = item.jogoId ?? item.titulo;
+    const current = groups.get(key) ?? { key, titulo: item.titulo, entries: [] };
+    current.entries.push(item);
+    groups.set(key, current);
+    return groups;
+  }, new Map()).values());
 
   return <main id="jogos-concluidos">
     <header className="page-header"><div><span className="eyebrow">SEU PROGRESSO</span><h1>Jogos concluídos</h1><p>Acompanhe jogos zerados, dropados e ainda não terminados.</p></div></header>
@@ -105,7 +113,7 @@ export default function GameTrackingScreen() {
           <label htmlFor="tracking-platform">Plataforma</label>
           <select id="tracking-platform" value={form.plataforma} onChange={change('plataforma')} required><option value="">Selecione</option>{platforms.map((item) => <option key={item}>{item}</option>)}</select>
           <label htmlFor="tracking-status">Status</label>
-          <select id="tracking-status" value={form.status} onChange={change('status')}><option value="NaoTerminado">Não terminado</option><option value="Zerado">Zerado</option><option value="Dropado">Dropado</option></select>
+          <select id="tracking-status" value={form.status} onChange={change('status')}><option value="NaoTerminado">Em andamento</option><option value="Zerado">Zerado</option><option value="Dropado">Dropado</option></select>
           <label htmlFor="tracking-date">{dateLabel(form.status)}</label>
           <input id="tracking-date" type="date" value={form.dataStatus} onChange={change('dataStatus')} />
           <div className="tracking-numbers">
@@ -119,10 +127,27 @@ export default function GameTrackingScreen() {
         </form>
       </div>
       <section className="tracking-list" aria-label="Jogos acompanhados">
-        {loading ? <div className="panel-card">Carregando...</div> : items.length === 0 ? <div className="panel-card tracking-empty"><h2>Nenhum jogo acompanhado</h2><p>Cadastre um jogo para começar a registrar seu progresso.</p></div> : items.map((item) => <article className="tracking-card" key={item.id}>
-          <div className="tracking-card-head"><div><span className={`status-badge status-${item.status}`}>{statusLabels[item.status]}</span><h2>{item.titulo}</h2><p>{item.plataforma}{item.estaNaBiblioteca ? ' · Na Biblioteca' : ''}</p></div><div><button type="button" className="history-toggle" aria-label={`Editar ${item.titulo}`} onClick={() => edit(item)}>Editar</button><button type="button" className="danger-link" aria-label={`Excluir ${item.titulo}`} onClick={() => remove(item)}>Excluir</button></div></div>
-          <div className="tracking-details"><span><small>Tempo</small><strong>{item.tempoEmHoras ?? 0} h</strong></span><span><small>Conquistas</small><strong>{item.conquistasObtidas ?? 0}/{item.conquistasPossiveis ?? 0}</strong></span><span><small>Data</small><strong>{item.dataStatus ? new Date(item.dataStatus).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não informada'}</strong></span></div>
-          <div className="achievement-progress"><div><span>Progresso das conquistas</span><strong>{item.percentualConquistas}%</strong></div><span className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, item.percentualConquistas))}%` }} /></span></div>
+        {loading ? <div className="panel-card">Carregando...</div> : items.length === 0 ? <div className="panel-card tracking-empty"><h2>Nenhum jogo acompanhado</h2><p>Cadastre um jogo para começar a registrar seu progresso.</p></div> : groupedItems.map((group) => <article className="tracking-card tracking-game-card" key={group.key}>
+          <header className="tracking-game-head">
+            <div><h2>{group.titulo}</h2><p>{group.entries.length} {group.entries.length === 1 ? 'plataforma acompanhada' : 'plataformas acompanhadas'}</p></div>
+          </header>
+          <div className="tracking-platform-list">
+            {group.entries.map((item) => <section className="tracking-platform-entry" role="group" aria-label={item.plataforma} key={item.id}>
+              <div className="tracking-card-head">
+                <div>
+                  <span className={`status-badge status-${item.status}`}>{statusLabels[item.status]}</span>
+                  <strong className="tracking-platform-name">{item.plataforma}</strong>
+                  {item.estaNaBiblioteca && <small>Na Biblioteca</small>}
+                </div>
+                <div className="tracking-entry-actions">
+                  <button type="button" className="history-toggle" aria-label={`Editar ${item.titulo} em ${item.plataforma}`} onClick={() => edit(item)}>Editar</button>
+                  <button type="button" className="danger-link" aria-label={`Excluir ${item.titulo} em ${item.plataforma}`} onClick={() => remove(item)}>Excluir</button>
+                </div>
+              </div>
+              <div className="tracking-details"><span><small>Tempo</small><strong>{item.tempoEmHoras ?? 0} h</strong></span><span><small>Conquistas</small><strong>{item.conquistasObtidas ?? 0}/{item.conquistasPossiveis ?? 0}</strong></span><span><small>Data</small><strong>{item.dataStatus ? new Date(item.dataStatus).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não informada'}</strong></span></div>
+              <div className="achievement-progress"><div><span>Progresso das conquistas</span><strong>{item.percentualConquistas}%</strong></div><span className="progress-track"><span style={{ width: `${Math.max(0, Math.min(100, item.percentualConquistas))}%` }} /></span></div>
+            </section>)}
+          </div>
         </article>)}
       </section>
     </section>

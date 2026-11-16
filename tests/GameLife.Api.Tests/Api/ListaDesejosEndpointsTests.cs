@@ -12,7 +12,7 @@ public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactor
     [Fact]
     public async Task CriarDesejoReutilizaJogoDaBibliotecaESinalizaPosse()
     {
-        await _client.PostAsJsonAsync("/biblioteca", new { titulo = "Hades", plataforma = "PC", midiaFisica = false });
+        await _client.PostAsJsonAsync("/biblioteca", NovoItemBiblioteca("Hades", "PC"));
 
         var resposta = await _client.PostAsJsonAsync("/api/lista-desejos", new
         {
@@ -62,7 +62,7 @@ public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactor
     [Fact]
     public async Task ExcluirDesejoPreservaJogoDaBiblioteca()
     {
-        await _client.PostAsJsonAsync("/biblioteca", new { titulo = "Celeste", plataforma = "PC", midiaFisica = false });
+        await _client.PostAsJsonAsync("/biblioteca", NovoItemBiblioteca("Celeste", "PC"));
         var criada = await _client.PostAsJsonAsync("/api/lista-desejos", new { titulo = "Celeste" });
         var desejo = await criada.Content.ReadFromJsonAsync<DesejoResponse>();
 
@@ -75,7 +75,7 @@ public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactor
     public async Task AdicionarNaBibliotecaDepoisDoDesejoAtualizaFlagDePosse()
     {
         await _client.PostAsJsonAsync("/api/lista-desejos", new { titulo = "Neva" });
-        await _client.PostAsJsonAsync("/biblioteca", new { titulo = " neVA ", plataforma = "STEAM", midiaFisica = false });
+        await _client.PostAsJsonAsync("/biblioteca", NovoItemBiblioteca(" neVA ", "STEAM"));
 
         var itens = await _client.GetFromJsonAsync<DesejoResponse[]>("/api/lista-desejos");
         Assert.True(Assert.Single(itens!, x => x.Titulo == "Neva").JaTenho);
@@ -94,6 +94,13 @@ public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactor
     }
 
     private sealed record BibliotecaItem(string Titulo);
+
+    private static object NovoItemBiblioteca(string titulo, string plataforma) => new
+    {
+        titulo,
+        plataformas = new[] { new { plataforma, midiaFisica = false } }
+    };
+
     private sealed record PrecoAtualResponse(int CanalId, string CanalNome, decimal PrecoAtual, decimal? MenorPrecoHistorico);
     private sealed record HistoricoPrecoResponse(int Id, decimal PrecoAtual);
     private sealed record DesejoResponse(

@@ -20,8 +20,10 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
     [Fact]
     public async Task RefleteBibliotecaFinalizacoesHorasConquistasPlataformasEAnos()
     {
-        var steam = await AdicionarJogo("Hades", "STEAM");
+        var hades = await AdicionarJogo("Hades", "STEAM", "PC");
+        var steam = hades.Plataformas.Single(item => item.Nome == "STEAM");
         var playstation = await AdicionarJogo("Astro Bot", "PlayStation 5");
+        var playstationPosse = playstation.Plataformas.Single();
 
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
@@ -29,9 +31,9 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
             contexto.AcompanhamentosJogos.AddRange(
                 new AcompanhamentoJogo
                 {
-                    JogoId = steam.JogoId,
-                    CanalId = await contexto.PossesJogos.Where(item => item.Id == steam.Id).Select(item => item.CanalId).SingleAsync(),
-                    PosseJogoId = steam.Id,
+                    JogoId = hades.JogoId,
+                    CanalId = steam.CanalId,
+                    PosseJogoId = steam.PosseId,
                     Status = StatusAcompanhamentoJogo.Zerado,
                     DataStatus = new DateTime(2024, 6, 15, 20, 30, 0, DateTimeKind.Utc),
                     TempoEmHoras = 31.5m,
@@ -41,8 +43,8 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
                 new AcompanhamentoJogo
                 {
                     JogoId = playstation.JogoId,
-                    CanalId = await contexto.PossesJogos.Where(item => item.Id == playstation.Id).Select(item => item.CanalId).SingleAsync(),
-                    PosseJogoId = playstation.Id,
+                    CanalId = playstationPosse.CanalId,
+                    PosseJogoId = playstationPosse.PosseId,
                     Status = StatusAcompanhamentoJogo.NaoTerminado,
                     TempoEmHoras = 120m
                 });
@@ -60,6 +62,7 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
         Assert.Equal(69, dashboard.Resumo.ConquistasObtidas);
         Assert.Equal(69.00m, dashboard.Resumo.PercentualConquistas);
         Assert.Equal(1, TotalDa(dashboard.BibliotecaPorPlataforma, "STEAM"));
+        Assert.Equal(1, TotalDa(dashboard.BibliotecaPorPlataforma, "PC"));
         Assert.Equal(1, TotalDa(dashboard.BibliotecaPorPlataforma, "PSN"));
         Assert.Equal(0, TotalDa(dashboard.BibliotecaPorPlataforma, "AMAZON PRIME"));
         Assert.Equal(1, TotalDa(dashboard.ZeradosPorPlataforma, "STEAM"));
@@ -68,22 +71,22 @@ public sealed class DashboardResumoEndpointsTests : IClassFixture<GameLifeApiFac
         Assert.Equal(0, dashboard.ZeradosPorAno.Single(item => item.Ano == 2043).Total);
     }
 
-    private async Task<ItemBibliotecaResponse> AdicionarJogo(string titulo, string plataforma)
+    private async Task<JogoBibliotecaResponse> AdicionarJogo(string titulo, params string[] plataformas)
     {
         var response = await _client.PostAsJsonAsync("/biblioteca", new
         {
             titulo,
-            plataforma,
-            midiaFisica = false
+            plataformas = plataformas.Select(plataforma => new { plataforma, midiaFisica = false })
         });
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<ItemBibliotecaResponse>())!;
+        return (await response.Content.ReadFromJsonAsync<JogoBibliotecaResponse>())!;
     }
 
     private static int TotalDa(IEnumerable<DistribuicaoResponse> itens, string nome)
         => itens.Single(item => item.Plataforma == nome).Total;
 
-    private sealed record ItemBibliotecaResponse(int Id, int JogoId, string Titulo, string Plataforma, bool MidiaFisica);
+    private sealed record JogoBibliotecaResponse(int JogoId, PlataformaBibliotecaResponse[] Plataformas);
+    private sealed record PlataformaBibliotecaResponse(int PosseId, int CanalId, string Nome);
     private sealed record PerfilResponse(DateTime DataEntrada);
     private sealed record ResumoResponse(
         int TotalJogos,

@@ -1,8 +1,7 @@
-$scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'backup-mysql.ps1'
-
 Describe 'Backup MySQL do GameLife' {
     BeforeAll {
-        . $scriptPath
+        $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'backup-mysql.ps1'
+        . $script:scriptPath
     }
 
     It 'falha quando o mysqldump não está instalado' {
