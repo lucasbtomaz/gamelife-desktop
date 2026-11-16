@@ -1149,6 +1149,152 @@ button:disabled {
   font-size: 12px;
 }
 
+.price-history-chart {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: rgba(4, 9, 22, 0.5);
+}
+
+.price-chart-canvas {
+  position: relative;
+  min-width: 0;
+}
+
+.price-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.price-chart-grid {
+  stroke: rgba(148, 163, 184, 0.16);
+  stroke-width: 1;
+}
+
+.price-chart-axis {
+  fill: #94a3b8;
+  font-size: 11px;
+  font-family: 'Manrope', sans-serif;
+}
+
+.price-chart-axis-y {
+  text-anchor: end;
+}
+
+.price-chart-axis-x {
+  text-anchor: middle;
+}
+
+.price-chart-line {
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+.price-chart-point {
+  cursor: pointer;
+  stroke: #0f172a;
+  stroke-width: 2;
+  transition: r 0.15s ease, stroke 0.15s ease;
+}
+
+.price-chart-point:hover,
+.price-chart-point:focus {
+  r: 8;
+  outline: none;
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.price-chart-point-min {
+  stroke: #facc15;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.65));
+}
+
+.price-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  padding: 9px 11px;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 10px;
+  background: #080d1b;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  color: #e2e8f0;
+  font-size: 11px;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.price-chart-tooltip strong,
+.price-chart-tooltip span {
+  color: #fff;
+}
+
+.price-chart-tooltip time {
+  color: #94a3b8;
+}
+
+.price-chart-tooltip em {
+  color: #fde047;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.price-chart-legend {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 4px 2px 2px;
+  overflow-x: auto;
+}
+
+.price-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+.price-chart-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.price-chart-empty {
+  margin: 14px 0 0;
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .price-history-chart {
+    padding: 8px;
+  }
+
+  .price-chart-axis {
+    font-size: 9px;
+  }
+
+  .price-chart-tooltip {
+    min-width: 130px;
+    padding: 7px 9px;
+  }
+}
+
 /* ACOMPANHAMENTO DE JOGOS */
 .tracking-layout {
   max-width: 1200px;

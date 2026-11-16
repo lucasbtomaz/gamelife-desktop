@@ -14,6 +14,7 @@ import {
   salvarAssinatura
 } from '../api/assinaturas.js';
 import AssinaturaModal from '../components/AssinaturaModal.jsx';
+import PriceHistoryChart from '../components/PriceHistoryChart.jsx';
 
 const valor = (numero) => numero == null ? '—' : Number(numero).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -249,7 +250,7 @@ export default function WishlistScreen() {
               <button type="submit" aria-label={`Salvar preço de ${item.titulo}`}>Salvar preço</button>
             </form>
             <button className="history-toggle" type="button" onClick={() => setAbertos({ ...abertos, [item.id]: !abertos[item.id] })}>{abertos[item.id] ? 'Ocultar histórico' : `Ver histórico (${item.historicoPrecos?.length || 0})`}</button>
-            {abertos[item.id] && <div className="price-history">{item.historicoPrecos?.map((preco) => <div key={preco.id}><span>{preco.canalNome}</span><strong>{valor(preco.precoAtual)}</strong><time>{new Date(preco.consultadoEm).toLocaleString('pt-BR')}</time></div>)}</div>}
+            {abertos[item.id] && <PriceHistoryChart registros={item.historicoPrecos} tituloJogo={item.titulo} />}
           </article>;
         })}
       </section>

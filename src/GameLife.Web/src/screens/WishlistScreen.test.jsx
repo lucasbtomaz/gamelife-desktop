@@ -55,6 +55,35 @@ test('mostra posse, preços e mantém formulário após erro de cotação', asyn
   expect(screen.getByLabelText('Loja de Celeste')).toHaveValue('EPIC');
 });
 
+test('abre o histórico como gráfico com uma linha por plataforma', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => [{
+      id: 4,
+      jogoId: 40,
+      titulo: 'Slime Rancher 2',
+      jaTenho: false,
+      precosAtuais: [],
+      historicoPrecos: [
+        { id: 1, canalId: 1, canalNome: 'STEAM', precoAtual: 80.99, disponivel: true, consultadoEm: '2025-05-10T12:00:00Z' },
+        { id: 2, canalId: 1, canalNome: 'STEAM', precoAtual: 65.98, disponivel: true, consultadoEm: '2026-11-12T18:15:16Z' },
+        { id: 3, canalId: 2, canalNome: 'PlayStation', precoAtual: 95.94, disponivel: true, consultadoEm: '2026-11-16T13:11:58Z' }
+      ],
+      assinaturas: []
+    }]
+  });
+
+  render(<WishlistScreen />);
+  const card = (await screen.findByRole('heading', { name: 'Slime Rancher 2' })).closest('article');
+  fireEvent.click(within(card).getByRole('button', { name: 'Ver histórico (3)' }));
+
+  const grafico = within(card).getByRole('img', { name: 'Histórico de preços de Slime Rancher 2' });
+  expect(within(grafico).getAllByRole('button')).toHaveLength(3);
+  expect(within(card).getByLabelText('Legenda do histórico de preços')).toHaveTextContent('STEAM');
+  expect(within(card).getByLabelText('Legenda do histórico de preços')).toHaveTextContent('PlayStation');
+  expect(card.querySelector('.price-history')).not.toBeInTheDocument();
+});
+
 test('abre formulário de assinatura somente no modal, adiciona múltiplas, edita e remove', async () => {
   fetch
     .mockResolvedValueOnce({
