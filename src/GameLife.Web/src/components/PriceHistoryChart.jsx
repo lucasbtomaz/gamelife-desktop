@@ -5,6 +5,11 @@ const ALTURA = 320;
 const MARGEM = { topo: 28, direita: 24, base: 58, esquerda: 76 };
 const CORES = ['#8b5cf6', '#38bdf8', '#f59e0b', '#22c55e', '#ec4899', '#f97316', '#14b8a6', '#a78bfa'];
 
+const corDaPlataforma = (chave) => {
+  const hash = String(chave).split('').reduce((total, caractere) => ((total * 31) + caractere.charCodeAt(0)) | 0, 0);
+  return CORES[Math.abs(hash) % CORES.length];
+};
+
 const formatarValor = (valor) => Number(valor).toLocaleString('pt-BR', {
   style: 'currency',
   currency: 'BRL'
@@ -35,9 +40,9 @@ function prepararGrafico(registros) {
     agrupados.get(chave).push(registro);
   });
 
-  const series = [...agrupados.values()].map((pontos, indice) => ({
+  const series = [...agrupados.entries()].map(([chave, pontos]) => ({
     nome: pontos[0].canalNome,
-    cor: CORES[indice % CORES.length],
+    cor: corDaPlataforma(chave),
     pontos: pontos.sort((a, b) => a.instante - b.instante || a.id - b.id)
   }));
 
@@ -51,7 +56,9 @@ function prepararGrafico(registros) {
 
   let instanteMin = Math.min(...instantes);
   let instanteMax = Math.max(...instantes);
-  if (instanteMin === instanteMax) {
+  const instanteUnico = instanteMin === instanteMax;
+  const instanteReal = instanteMin;
+  if (instanteUnico) {
     const dozeHoras = 12 * 60 * 60 * 1000;
     instanteMin -= dozeHoras;
     instanteMax += dozeHoras;
@@ -81,7 +88,7 @@ function prepararGrafico(registros) {
         menor: registro.id === menorId
       }))
     })),
-    ticksX: [instanteMin, (instanteMin + instanteMax) / 2, instanteMax].map((valor) => ({
+    ticksX: (instanteUnico ? [instanteReal] : [instanteMin, (instanteMin + instanteMax) / 2, instanteMax]).map((valor) => ({
       valor,
       x: escalaX(valor)
     })),
@@ -106,7 +113,8 @@ export default function PriceHistoryChart({ registros = [], tituloJogo }) {
         <svg
           className="price-chart-svg"
           viewBox={`0 0 ${LARGURA} ${ALTURA}`}
-          role="img"
+          role="group"
+          aria-roledescription="gráfico de linhas"
           aria-label={`Histórico de preços de ${tituloJogo}`}
         >
           {grafico.ticksY.map((tick) => (
@@ -143,7 +151,7 @@ export default function PriceHistoryChart({ registros = [], tituloJogo }) {
                     cy={ponto.y}
                     r={ponto.menor ? 7 : 5}
                     fill={serie.cor}
-                    role="button"
+                    role="img"
                     tabIndex="0"
                     aria-label={descricao}
                     onFocus={() => setAtivo({ ...ponto, nome: serie.nome })}

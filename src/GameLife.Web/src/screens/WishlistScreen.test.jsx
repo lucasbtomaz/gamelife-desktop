@@ -77,8 +77,8 @@ test('abre o histórico como gráfico com uma linha por plataforma', async () =>
   const card = (await screen.findByRole('heading', { name: 'Slime Rancher 2' })).closest('article');
   fireEvent.click(within(card).getByRole('button', { name: 'Ver histórico (3)' }));
 
-  const grafico = within(card).getByRole('img', { name: 'Histórico de preços de Slime Rancher 2' });
-  expect(within(grafico).getAllByRole('button')).toHaveLength(3);
+  const grafico = within(card).getByRole('group', { name: 'Histórico de preços de Slime Rancher 2' });
+  expect(within(grafico).getAllByRole('img')).toHaveLength(3);
   expect(within(card).getByLabelText('Legenda do histórico de preços')).toHaveTextContent('STEAM');
   expect(within(card).getByLabelText('Legenda do histórico de preços')).toHaveTextContent('PlayStation');
   expect(card.querySelector('.price-history')).not.toBeInTheDocument();
