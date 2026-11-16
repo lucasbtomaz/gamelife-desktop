@@ -1,6 +1,7 @@
 using gamelife_api.Context;
 using gamelife_api.Contracts;
 using gamelife_api.Models;
+using gamelife_api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
@@ -171,11 +172,12 @@ public sealed class AcompanhamentosJogosController : ControllerBase
     {
         var titulo = request.Titulo.Trim();
         var plataforma = request.Plataforma.Trim();
-        var tituloNormalizado = NormalizarChave(titulo);
+        var tituloNormalizado = BibliotecaService.NormalizarTitulo(titulo);
         var plataformaNormalizada = NormalizarChave(plataforma);
         var jogos = await _contexto.Jogos.ToListAsync(cancellationToken);
         var canais = await _contexto.Canais.ToListAsync(cancellationToken);
-        var jogo = jogos.FirstOrDefault(item => NormalizarChave(item.Titulo) == tituloNormalizado)
+        var jogo = jogos.FirstOrDefault(
+            item => BibliotecaService.NormalizarTitulo(item.Titulo) == tituloNormalizado)
             ?? new Jogo { Titulo = titulo };
         var canal = canais.FirstOrDefault(item => NormalizarChave(item.Nome) == plataformaNormalizada)
             ?? new Canal { Nome = plataforma, PermitePosse = request.AdicionarBiblioteca };

@@ -37,6 +37,23 @@ public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactor
     }
 
     [Fact]
+    public async Task CriarDesejoTrataMarcasEApostrofoComoOMesmoTitulo()
+    {
+        var identificador = Guid.NewGuid().ToString("N");
+        var primeira = await _client.PostAsJsonAsync("/api/lista-desejos", new
+        {
+            titulo = $"Sid Meier's Civilization® VII {identificador}"
+        });
+        var repetida = await _client.PostAsJsonAsync("/api/lista-desejos", new
+        {
+            titulo = $"Sid Meiers Civilization VII {identificador}"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, primeira.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, repetida.StatusCode);
+    }
+
+    [Fact]
     public async Task AdicionarPrecoMantemHistoricoEDestacaMenorValor()
     {
         var criada = await _client.PostAsJsonAsync("/api/lista-desejos", new { titulo = "Silksong" });

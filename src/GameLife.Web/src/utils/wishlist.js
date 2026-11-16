@@ -1,6 +1,7 @@
 export const normalizarBusca = (texto) => String(texto ?? '')
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^\p{L}\p{N}]/gu, '')
   .toLocaleLowerCase('pt-BR')
   .trim();
 

@@ -34,8 +34,10 @@ public sealed class ItensListaDesejosController : ControllerBase
     {
         var titulo = request.Titulo.Trim();
         if (titulo.Length == 0) return BadRequest(new { mensagem = "Informe o nome do jogo." });
-        var normalizado = titulo.ToLower();
-        var jogo = await _contexto.Jogos.FirstOrDefaultAsync(item => item.Titulo.Trim().ToLower() == normalizado);
+        var normalizado = BibliotecaService.NormalizarTitulo(titulo);
+        var jogos = await _contexto.Jogos.ToListAsync();
+        var jogo = jogos.FirstOrDefault(
+            item => BibliotecaService.NormalizarTitulo(item.Titulo) == normalizado);
         if (jogo is not null && await _contexto.ItensListaDesejos.AnyAsync(item => item.JogoId == jogo.Id))
             return Conflict(new { mensagem = "Este jogo já está na lista de desejos." });
         jogo ??= new Jogo { Titulo = titulo };

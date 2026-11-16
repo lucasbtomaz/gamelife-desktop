@@ -53,6 +53,21 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
         Assert.Equal(HttpStatusCode.Conflict, duplicado.StatusCode);
     }
 
+    [Fact]
+    public async Task ImpedeDuplicidadeQuandoTituloOmiteMarcasEApostrofo()
+    {
+        var identificador = Guid.NewGuid().ToString("N");
+        var primeira = await _client.PostAsJsonAsync(
+            "/api/acompanhamentos-jogos",
+            Novo($"Sid Meier's Civilization® VII {identificador}"));
+        var repetida = await _client.PostAsJsonAsync(
+            "/api/acompanhamentos-jogos",
+            Novo($"Sid Meiers Civilization VII {identificador}"));
+
+        Assert.Equal(HttpStatusCode.Created, primeira.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, repetida.StatusCode);
+    }
+
     [Theory]
     [InlineData(null, 1)]
     [InlineData(2, 3)]

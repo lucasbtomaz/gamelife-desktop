@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using gamelife_api.Context;
 using gamelife_api.Contracts;
@@ -424,9 +425,20 @@ public sealed class BibliotecaService
     public static string NormalizarTitulo(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-        var normalized = value.Trim().Normalize(NormalizationForm.FormKC).ToUpperInvariant();
-        var characters = normalized.Select(character => char.IsLetterOrDigit(character) ? character : ' ').ToArray();
-        return string.Join(" ", new string(characters).Split([' '], StringSplitOptions.RemoveEmptyEntries));
+        var decomposed = value.Trim()
+            .Normalize(NormalizationForm.FormKC)
+            .Normalize(NormalizationForm.FormD);
+        var key = new StringBuilder(decomposed.Length);
+
+        foreach (var character in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+                continue;
+            if (char.IsLetterOrDigit(character))
+                key.Append(char.ToUpperInvariant(character));
+        }
+
+        return key.ToString();
     }
 }
 
