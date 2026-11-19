@@ -8,7 +8,7 @@ Describe 'Atalho desktop do GameLife' {
         $projectRoot = Join-Path $TestDrive 'GameLife'
 
         Get-GameLifePublishedExecutablePath -ProjectRoot $projectRoot |
-            Should Be (Join-Path $projectRoot 'artifacts\GameLife\GameLife.exe')
+            Should -Be (Join-Path $projectRoot 'artifacts\GameLife\GameLife.exe')
     }
 
     It 'aponta diretamente para o executável sem PowerShell ou argumentos' {
@@ -28,11 +28,11 @@ Describe 'Atalho desktop do GameLife' {
 
         New-GameLifeShortcut -ExecutablePath $executavel -ShortcutPath (Join-Path $TestDrive 'GameLife.lnk') -Shell $shell
 
-        $atalho.TargetPath | Should Be $executavel
-        $atalho.Arguments | Should BeNullOrEmpty
-        $atalho.WorkingDirectory | Should Be (Split-Path $executavel -Parent)
-        $atalho.IconLocation | Should Be "$executavel,0"
-        $atalho.Salvo | Should Be $true
+        $atalho.TargetPath | Should -Be $executavel
+        $atalho.Arguments | Should -BeNullOrEmpty
+        $atalho.WorkingDirectory | Should -Be (Split-Path $executavel -Parent)
+        $atalho.IconLocation | Should -Be "$executavel,0"
+        $atalho.Salvo | Should -Be $true
     }
 
     It 'instala o atalho no caminho explicito sem acessar a Area de Trabalho real' {
@@ -57,8 +57,8 @@ Describe 'Atalho desktop do GameLife' {
             -ShortcutPath $caminhoAtalho `
             -Shell $shell
 
-        $atalho.TargetPath | Should Be $executavel
-        $atalho.Salvo | Should Be $true
+        $atalho.TargetPath | Should -Be $executavel
+        $atalho.Salvo | Should -Be $true
     }
 
     It 'remove o arquivo antigo antes de criar um novo atalho' {
@@ -82,7 +82,7 @@ Describe 'Atalho desktop do GameLife' {
             -ShortcutPath $caminhoAtalho `
             -Shell $shell
 
-        $caminhoAtalho | Should Not Exist
-        $atalho.TargetPath | Should Be $executavel
+        $caminhoAtalho | Should -Not -Exist
+        $atalho.TargetPath | Should -Be $executavel
     }
 }

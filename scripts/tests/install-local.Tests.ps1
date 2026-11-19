@@ -2,6 +2,14 @@ Describe 'Instalação local do GameLife' {
     BeforeAll {
         $script:scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'install-local.ps1'
         . $script:scriptPath -LibraryOnly
+
+        function New-TestPublication {
+            param([string]$Path)
+
+            New-Item -ItemType Directory -Path (Join-Path $Path 'wwwroot') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $Path 'GameLife.exe') -Value 'executável novo'
+            Set-Content -LiteralPath (Join-Path $Path 'wwwroot\index.html') -Value '<div id="root"></div>'
+        }
     }
 
     BeforeEach {
@@ -18,19 +26,11 @@ Describe 'Instalação local do GameLife' {
         }
     }
 
-    function New-TestPublication {
-        param([string]$Path)
-
-        New-Item -ItemType Directory -Path (Join-Path $Path 'wwwroot') -Force | Out-Null
-        Set-Content -LiteralPath (Join-Path $Path 'GameLife.exe') -Value 'executável novo'
-        Set-Content -LiteralPath (Join-Path $Path 'wwwroot\index.html') -Value '<div id="root"></div>'
-    }
-
     It 'resolve a instalação dentro de LocalApplicationData' {
         $localData = Join-Path $script:testRoot 'LocalAppData'
 
         Get-GameLifeInstallRoot -LocalApplicationData $localData |
-            Should Be (Join-Path $localData 'GameLife\App')
+            Should -Be (Join-Path $localData 'GameLife\App')
     }
 
     It 'instala o executável e os recursos web' {
@@ -40,8 +40,8 @@ Describe 'Instalação local do GameLife' {
 
         Install-GameLifeFiles -Source $source -Destination $destination
 
-        (Join-Path $destination 'GameLife.exe') | Should Exist
-        (Join-Path $destination 'wwwroot\index.html') | Should Exist
+        (Join-Path $destination 'GameLife.exe') | Should -Exist
+        (Join-Path $destination 'wwwroot\index.html') | Should -Exist
     }
 
     It 'preserva a configuração local fora da pasta substituída' {
@@ -56,8 +56,8 @@ Describe 'Instalação local do GameLife' {
 
         Install-GameLifeFiles -Source $source -Destination $destination
 
-        Get-Content -Raw $configuration | Should Match 'preservado'
-        (Join-Path $destination 'arquivo-antigo.txt') | Should Not Exist
+        Get-Content -Raw $configuration | Should -Match 'preservado'
+        (Join-Path $destination 'arquivo-antigo.txt') | Should -Not -Exist
     }
 
     It 'preserva a copia da configuracao ao lado do executavel' {
@@ -72,7 +72,7 @@ Describe 'Instalação local do GameLife' {
         Install-GameLifeFiles -Source $source -Destination $destination
 
         Get-Content -Raw (Join-Path $destination 'appsettings.Local.json') |
-            Should Match 'conexao-preservada'
+            Should -Match 'conexao-preservada'
     }
 
     It 'rejeita uma publicação sem executável e mantém a instalação atual' {
@@ -91,8 +91,8 @@ Describe 'Instalação local do GameLife' {
             $exception = $_
         }
 
-        $exception | Should Not BeNullOrEmpty
-        Get-Content -Raw (Join-Path $destination 'GameLife.exe') | Should Match 'atual'
+        $exception | Should -Not -BeNullOrEmpty
+        Get-Content -Raw (Join-Path $destination 'GameLife.exe') | Should -Match 'atual'
     }
 
     It 'mantém a instalação atual quando o executável está bloqueado' {
@@ -117,7 +117,7 @@ Describe 'Instalação local do GameLife' {
             $lock.Dispose()
         }
 
-        $exception | Should Not BeNullOrEmpty
-        Get-Content -Raw $installedExecutable | Should Match 'atual'
+        $exception | Should -Not -BeNullOrEmpty
+        Get-Content -Raw $installedExecutable | Should -Match 'atual'
     }
 }

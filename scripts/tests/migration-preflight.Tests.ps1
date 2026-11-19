@@ -24,7 +24,7 @@ Describe 'Verificação das origens da consolidação' {
 
     It 'aceita uma origem sem alterações locais' {
         { Assert-GameLifeSourceState -RepositoryPath $script:testRepositoryPath } |
-            Should Not Throw
+            Should -Not -Throw
     }
 
     It 'rejeita uma origem com arquivo não rastreado e informa o caminho' {
@@ -38,7 +38,7 @@ Describe 'Verificação das origens da consolidação' {
             $exception = $_
         }
 
-        $exception | Should Not BeNullOrEmpty
-        $exception.Exception.Message | Should Match ([regex]::Escape($script:testRepositoryPath))
+        $exception | Should -Not -BeNullOrEmpty
+        $exception.Exception.Message | Should -Match ([regex]::Escape($script:testRepositoryPath))
     }
 }

@@ -14,7 +14,7 @@ Describe 'Segurança do repositório público' {
             ($_ -match '(^|/)\.env($|\.)' -and $_ -notmatch '\.env\.example$')
         })
 
-        ($forbidden -join "`n") | Should BeNullOrEmpty
+        ($forbidden -join "`n") | Should -BeNullOrEmpty
     }
 
     It 'não contém caminhos absolutos de perfis ou pastas pessoais' {
@@ -24,13 +24,13 @@ Describe 'Segurança do repositório público' {
             throw 'Não foi possível examinar o conteúdo rastreado.'
         }
 
-        ($matches -join "`n") | Should BeNullOrEmpty
+        ($matches -join "`n") | Should -BeNullOrEmpty
     }
 
     It 'executa as verificações PowerShell no CI' {
         $workflowPath = Join-Path $repositoryRoot '.github\workflows\ci.yml'
         $workflow = Get-Content -Raw $workflowPath
 
-        $workflow | Should Match 'Invoke-Pester'
+        $workflow | Should -Match 'Invoke-Pester'
     }
 }

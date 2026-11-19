@@ -7,13 +7,13 @@ Describe 'Inicializador local do GameLife' {
     It 'rejeita resposta de outro aplicativo na mesma porta' {
         Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = 200; Content = '<html>outro app</html>' } }
 
-        Test-GameLifeReady -HealthUrl 'http://127.0.0.1:5044' -TimeoutSeconds 0 | Should Be $false
+        Test-GameLifeReady -HealthUrl 'http://127.0.0.1:5044' -TimeoutSeconds 0 | Should -Be $false
     }
 
     It 'aceita somente a identidade esperada do GameLife' {
         Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = 200; Content = '{"application":"GameLife","status":"ready"}' } }
 
-        Test-GameLifeReady -HealthUrl 'http://127.0.0.1:5044' -TimeoutSeconds 0 | Should Be $true
+        Test-GameLifeReady -HealthUrl 'http://127.0.0.1:5044' -TimeoutSeconds 0 | Should -Be $true
     }
 
     It 'salva uma copia da configuracao no caminho informado' {
@@ -23,8 +23,8 @@ Describe 'Inicializador local do GameLife' {
             -ConnectionString 'Server=local;Database=gamelife' `
             -ConfigurationPath $configurationPath | Out-Null
 
-        $configurationPath | Should Exist
-        (Get-Content -Raw -LiteralPath $configurationPath) | Should Match 'Server=local'
+        $configurationPath | Should -Exist
+        (Get-Content -Raw -LiteralPath $configurationPath) | Should -Match 'Server=local'
     }
 
     It 'falha com mensagem clara quando o executável não existe' {
@@ -38,8 +38,8 @@ Describe 'Inicializador local do GameLife' {
             $exception = $_
         }
 
-        $exception | Should Not BeNullOrEmpty
-        $exception.Exception.Message | Should Match '^Executável do GameLife não encontrado'
+        $exception | Should -Not -BeNullOrEmpty
+        $exception.Exception.Message | Should -Match '^Executável do GameLife não encontrado'
     }
 
     It 'não inicia uma segunda instância quando a API já está pronta' {
@@ -75,7 +75,7 @@ Describe 'Inicializador local do GameLife' {
 
         $exitCode = Invoke-GameLifeLauncher -ExecutablePath 'GameLife.exe' -NoBrowser
 
-        $exitCode | Should Be 1
+        $exitCode | Should -Be 1
         Assert-MockCalled Show-GameLifeError -Times 1 -ParameterFilter {
             $Message -notmatch 'sensível' -and $Message -match 'não conseguiu iniciar'
         }

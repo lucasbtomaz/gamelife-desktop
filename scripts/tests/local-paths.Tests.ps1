@@ -8,13 +8,13 @@ Describe 'Caminhos locais estaveis do GameLife' {
         $perfil = Join-Path $TestDrive 'Usuario'
 
         Get-GameLifeLocalApplicationDataPath -UserProfile $perfil |
-            Should Be (Join-Path $perfil 'AppData\Local')
+            Should -Be (Join-Path $perfil 'AppData\Local')
     }
 
     It 'respeita a Area de Trabalho configurada pelo Windows' {
         $desktop = Join-Path $TestDrive 'OneDrive\Desktop'
 
         Get-GameLifeDesktopPath -UserProfile $TestDrive -ConfiguredDesktop $desktop |
-            Should Be $desktop
+            Should -Be $desktop
     }
 }

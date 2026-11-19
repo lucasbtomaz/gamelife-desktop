@@ -13,7 +13,7 @@ Describe 'Backup MySQL do GameLife' {
             $exception = $_
         }
 
-        $exception | Should Not BeNullOrEmpty
+        $exception | Should -Not -BeNullOrEmpty
     }
 
     It 'não mantém arquivo incompleto quando o mysqldump falha' {
@@ -28,8 +28,8 @@ Describe 'Backup MySQL do GameLife' {
             $exception = $_
         }
 
-        $exception | Should Not BeNullOrEmpty
-        Test-Path -LiteralPath $output | Should Be $false
+        $exception | Should -Not -BeNullOrEmpty
+        Test-Path -LiteralPath $output | Should -Be $false
     }
 
     It 'retorna um arquivo SQL válido quando o mysqldump termina com sucesso' {
@@ -41,8 +41,8 @@ Describe 'Backup MySQL do GameLife' {
 
         $result = Invoke-GameLifeBackup -OutputPath $output -MySqlDumpPath 'mysqldump.exe' -ConnectionString 'Server=local;Database=GameLifeDb;User=test;Password=test'
 
-        $result | Should Be $output
-        (Get-Item -LiteralPath $output).Length | Should BeGreaterThan 0
+        $result | Should -Be $output
+        (Get-Item -LiteralPath $output).Length | Should -BeGreaterThan 0
     }
 
     It 'preserva credenciais UTF-8 sem BOM no arquivo temporário' {
