@@ -18,6 +18,11 @@ namespace gamelife_api.Models
 
         public bool PorAssinatura { get; set; }
 
+        public bool ResgatadoDeAssinatura { get; set; }
+
+        [MaxLength(60, ErrorMessage = "O serviço exigido deve ter até 60 caracteres.")]
+        public string? ServicoExigido { get; set; }
+
         public DateTime? AdquiridoEm { get; set; }
 
         public Jogo Jogo { get; set; } = null!;
