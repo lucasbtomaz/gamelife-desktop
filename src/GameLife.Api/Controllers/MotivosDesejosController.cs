@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using gamelife_api.Context;
+using gamelife_api.Contracts;
 using gamelife_api.Models;
 
 namespace gamelife_api.Controllers
@@ -19,30 +20,28 @@ namespace gamelife_api.Controllers
 
         // GET: api/motivos-desejos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<MotivoDesejo>>> ObterMotivos()
+        public async Task<ActionResult<IEnumerable<MotivoResponse>>> ObterMotivos()
         {
-            return await _contexto.MotivosDesejos.ToListAsync();
+            return await _contexto.MotivosDesejos
+                .Select(item => new MotivoResponse(item.Id, item.ItemListaDesejosId, item.Descricao))
+                .ToListAsync();
         }
 
         // POST: api/motivos-desejos
         [HttpPost]
-        public async Task<ActionResult<MotivoDesejo>> CriarMotivo([FromBody] MotivoDesejo motivo)
+        public async Task<ActionResult<MotivoResponse>> CriarMotivo([FromBody] CriarMotivoRequest dados)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var itemExiste = await _contexto.ItensListaDesejos.AnyAsync(i => i.Id == motivo.ItemListaDesejosId);
+            var itemExiste = await _contexto.ItensListaDesejos.AnyAsync(i => i.Id == dados.ItemListaDesejosId);
             if (!itemExiste)
             {
-                return BadRequest(new { mensagem = $"Item da lista de desejos #{motivo.ItemListaDesejosId} não encontrado." });
+                return BadRequest(new { mensagem = $"Item da lista de desejos #{dados.ItemListaDesejosId} não encontrado." });
             }
 
+            var motivo = new MotivoDesejo { ItemListaDesejosId = dados.ItemListaDesejosId, Descricao = dados.Descricao };
             _contexto.MotivosDesejos.Add(motivo);
             await _contexto.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(ObterMotivos), new { id = motivo.Id }, motivo);
+            return CreatedAtAction(nameof(ObterMotivos), new { id = motivo.Id }, new MotivoResponse(motivo.Id, motivo.ItemListaDesejosId, motivo.Descricao));
         }
 
         // DELETE: api/motivos-desejos/5

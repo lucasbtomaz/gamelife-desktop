@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using gamelife_api.Context;
+using gamelife_api.Contracts;
 using gamelife_api.Models;
 
 namespace gamelife_api.Controllers
@@ -18,7 +19,7 @@ namespace gamelife_api.Controllers
 
         // GET: api/jogos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> ObterJogos([FromQuery] string? search)
+        public async Task<ActionResult<IEnumerable<JogoResumoResponse>>> ObterJogos([FromQuery] string? search)
         {
             var consulta = _contexto.Jogos.AsQueryable();
 
@@ -28,14 +29,9 @@ namespace gamelife_api.Controllers
             }
 
             var jogos = await consulta
-                .Select(j => new
-                {
-                    j.Id,
-                    j.Titulo,
-                    j.AnoLancamento,
-                    PossesCount = _contexto.PossesJogos.Count(p => p.JogoId == j.Id),
-                    NaListaDesejos = _contexto.ItensListaDesejos.Any(d => d.JogoId == j.Id)
-                })
+                .Select(j => new JogoResumoResponse(j.Id, j.Titulo, j.AnoLancamento,
+                    _contexto.PossesJogos.Count(p => p.JogoId == j.Id),
+                    _contexto.ItensListaDesejos.Any(d => d.JogoId == j.Id)))
                 .ToListAsync();
 
             return Ok(jogos);
@@ -43,7 +39,7 @@ namespace gamelife_api.Controllers
 
         // GET: api/jogos/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<object>> ObterJogoPorId(int id)
+        public async Task<ActionResult<JogoDetalheResponse>> ObterJogoPorId(int id)
         {
             var jogo = await _contexto.Jogos
                 .Include(j => j.PossesJogos)
@@ -60,40 +56,21 @@ namespace gamelife_api.Controllers
                 .Include(i => i.RegistrosPrecos)
                 .FirstOrDefaultAsync(i => i.JogoId == id);
 
-            return Ok(new
-            {
-                jogo.Id,
-                jogo.Titulo,
-                jogo.AnoLancamento,
-                Posses = jogo.PossesJogos.Select(p => new
-                {
-                    p.Id,
-                    p.CanalId,
-                    CanalNome = p.Canal != null ? p.Canal.Nome : null,
-                    p.AdquiridoEm
-                }),
-                ItemListaDesejos = itemListaDesejos != null ? new
-                {
-                    itemListaDesejos.Id,
-                    itemListaDesejos.PrecoDesejado,
-                    itemListaDesejos.Observacao,
+            return Ok(new JogoDetalheResponse(jogo.Id, jogo.Titulo, jogo.AnoLancamento,
+                jogo.PossesJogos.Select(p => new JogoPosseResponse(p.Id, p.CanalId, p.Canal?.Nome, p.AdquiridoEm)).ToArray(),
+                itemListaDesejos is null ? null : new JogoDesejoResponse(
+                    itemListaDesejos.Id, itemListaDesejos.PrecoDesejado, itemListaDesejos.Observacao,
                     itemListaDesejos.CriadoEm,
-                    Motivos = itemListaDesejos.Motivos.Select(m => new { m.Id, m.Descricao }),
-                    Precos = itemListaDesejos.RegistrosPrecos.Select(r => new { r.Id, r.CanalId, r.PrecoCheio, r.PrecoAtual, r.Disponivel })
-                } : null
-            });
+                    itemListaDesejos.Motivos.Select(m => new JogoMotivoResponse(m.Id, m.Descricao)).ToArray(),
+                    itemListaDesejos.RegistrosPrecos.Select(r =>
+                        new JogoPrecoResponse(r.Id, r.CanalId, r.PrecoCheio, r.PrecoAtual, r.Disponivel)).ToArray())));
         }
 
         // POST: api/jogos
         [HttpPost]
-        public async Task<ActionResult<Jogo>> CriarJogo([FromBody] Jogo jogo)
+        public async Task<ActionResult<JogoResponse>> CriarJogo([FromBody] CriarJogoRequest dados)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var tituloNormalizado = BibliotecaController.NormalizarTitulo(jogo.Titulo);
+            var tituloNormalizado = BibliotecaController.NormalizarTitulo(dados.Titulo);
             var jogosExistentes = await _contexto.Jogos.ToListAsync();
             var duplicado = jogosExistentes.FirstOrDefault(j => BibliotecaController.NormalizarTitulo(j.Titulo) == tituloNormalizado);
 
@@ -102,15 +79,16 @@ namespace gamelife_api.Controllers
                 return Conflict(new { erro = $"O jogo \"{duplicado.Titulo}\" já está cadastrado. Variações apenas de maiúsculas/minúsculas, espaços ou pontuação não são permitidas." });
             }
 
+            var jogo = new Jogo { Titulo = dados.Titulo, AnoLancamento = dados.AnoLancamento };
             _contexto.Jogos.Add(jogo);
             await _contexto.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(ObterJogoPorId), new { id = jogo.Id }, jogo);
+            return CreatedAtAction(nameof(ObterJogoPorId), new { id = jogo.Id }, new JogoResponse(jogo.Id, jogo.Titulo, jogo.AnoLancamento));
         }
 
         // PUT: api/jogos/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> AtualizarJogo(int id, [FromBody] Jogo dadosAtualizados)
+        public async Task<IActionResult> AtualizarJogo(int id, [FromBody] AtualizarJogoRequest dadosAtualizados)
         {
             if (id != dadosAtualizados.Id && dadosAtualizados.Id != 0)
             {
@@ -139,7 +117,7 @@ namespace gamelife_api.Controllers
                 throw;
             }
 
-            return Ok(jogoExistente);
+            return Ok(new JogoResponse(jogoExistente.Id, jogoExistente.Titulo, jogoExistente.AnoLancamento));
         }
 
         // DELETE: api/jogos/5

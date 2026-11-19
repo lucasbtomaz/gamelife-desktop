@@ -110,8 +110,8 @@ public sealed class BibliotecaService
             foreach (var platformRequest in request.Plataformas)
             {
                 var platformName = platformRequest.Plataforma.Trim();
-                var platformKey = NormalizarChave(platformName);
-                var channel = channels.FirstOrDefault(item => NormalizarChave(item.Nome) == platformKey);
+                var platformKey = ChaveTexto.NormalizarChave(platformName);
+                var channel = channels.FirstOrDefault(item => ChaveTexto.NormalizarChave(item.Nome) == platformKey);
                 if (channel is null)
                 {
                     channel = new Canal
@@ -356,7 +356,7 @@ public sealed class BibliotecaService
             if (string.IsNullOrWhiteSpace(platform.Plataforma))
                 throw new BibliotecaValidationException("Informe o nome de todas as plataformas.");
 
-            var key = NormalizarChave(platform.Plataforma);
+            var key = ChaveTexto.NormalizarChave(platform.Plataforma);
             if (!platformKeys.Add(key))
             {
                 throw new BibliotecaValidationException(
@@ -457,9 +457,6 @@ public sealed class BibliotecaService
         tracking.ConquistasPossiveis = request.ConquistasPossiveis;
         tracking.ConquistasObtidas = request.ConquistasObtidas;
     }
-
-    public static string NormalizarChave(string value) =>
-        value.Trim().Normalize(NormalizationForm.FormKC).ToUpperInvariant();
 
     public static string NormalizarTitulo(string? value)
     {

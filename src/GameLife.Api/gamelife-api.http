@@ -44,18 +44,19 @@ Content-Type: application/json
   "canalId": 1
 }
 
-### Listar Registros de Jogatina
-GET {{gamelife_api_HostAddress}}/api/registros-jogos
+### Consultar histórico legado (somente leitura)
+GET {{gamelife_api_HostAddress}}/api/registros
 Accept: application/json
 
-### Cadastrar Registro de Jogatina
-POST {{gamelife_api_HostAddress}}/api/registros-jogos
+### Registrar andamento ou conclusão
+POST {{gamelife_api_HostAddress}}/api/acompanhamentos-jogos
 Content-Type: application/json
 
 {
-  "posseJogoId": 1,
+  "titulo": "The Witcher 3: Wild Hunt",
+  "plataforma": "Steam",
+  "status": "Zerado",
   "tempoEmHoras": 85.5,
-  "dificuldade": "Normal",
   "conquistasPossiveis": 78,
   "conquistasObtidas": 65
 }
@@ -75,5 +76,5 @@ Content-Type: application/json
 }
 
 ### Obter Estatísticas do Dashboard
-GET {{gamelife_api_HostAddress}}/api/dashboard/stats
+GET {{gamelife_api_HostAddress}}/api/dashboard/inicio
 Accept: application/json

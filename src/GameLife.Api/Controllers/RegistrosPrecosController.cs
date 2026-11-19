@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using gamelife_api.Context;
+using gamelife_api.Contracts;
 using gamelife_api.Models;
 
 namespace gamelife_api.Controllers
@@ -19,24 +20,13 @@ namespace gamelife_api.Controllers
 
         // GET: api/registros-precos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> ObterRegistrosPrecos()
+        public async Task<ActionResult<IEnumerable<PrecoResumoResponse>>> ObterRegistrosPrecos()
         {
             var precos = await _contexto.RegistrosPrecos
-                .Include(r => r.Canal)
-                .Include(r => r.ItemListaDesejos)
-                    .ThenInclude(i => i.Jogo)
-                .Select(r => new
-                {
-                    r.Id,
-                    r.ItemListaDesejosId,
-                    r.CanalId,
-                    r.PrecoCheio,
-                    r.PrecoAtual,
-                    r.Disponivel,
-                    r.ConsultadoEm,
-                    CanalNome = r.Canal != null ? r.Canal.Nome : null,
-                    JogoTitulo = r.ItemListaDesejos != null && r.ItemListaDesejos.Jogo != null ? r.ItemListaDesejos.Jogo.Titulo : null
-                })
+                .Select(r => new PrecoResumoResponse(
+                    r.Id, r.ItemListaDesejosId, r.CanalId, r.PrecoCheio, r.PrecoAtual, r.Disponivel, r.ConsultadoEm,
+                    r.Canal != null ? r.Canal.Nome : null,
+                    r.ItemListaDesejos != null && r.ItemListaDesejos.Jogo != null ? r.ItemListaDesejos.Jogo.Titulo : null))
                 .ToListAsync();
 
             return Ok(precos);
@@ -44,17 +34,12 @@ namespace gamelife_api.Controllers
 
         // POST: api/registros-precos
         [HttpPost]
-        public async Task<ActionResult<RegistroPreco>> CriarRegistroPreco([FromBody] RegistroPreco registro)
+        public async Task<ActionResult<PrecoResponse>> CriarRegistroPreco([FromBody] CriarPrecoRequest dados)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var canal = await _contexto.Canais.FindAsync(registro.CanalId);
+            var canal = await _contexto.Canais.FindAsync(dados.CanalId);
             if (canal == null)
             {
-                return BadRequest(new { mensagem = $"Canal com ID {registro.CanalId} não encontrado." });
+                return BadRequest(new { mensagem = $"Canal com ID {dados.CanalId} não encontrado." });
             }
 
             if (!canal.PermitePreco)
@@ -62,26 +47,30 @@ namespace gamelife_api.Controllers
                 return BadRequest(new { mensagem = $"O canal '{canal.Nome}' não aceita cotação de preço." });
             }
 
-            var itemExiste = await _contexto.ItensListaDesejos.AnyAsync(i => i.Id == registro.ItemListaDesejosId);
+            var itemExiste = await _contexto.ItensListaDesejos.AnyAsync(i => i.Id == dados.ItemListaDesejosId);
             if (!itemExiste)
             {
-                return BadRequest(new { mensagem = $"Item da lista de desejos #{registro.ItemListaDesejosId} não encontrado." });
+                return BadRequest(new { mensagem = $"Item da lista de desejos #{dados.ItemListaDesejosId} não encontrado." });
             }
 
-            if (registro.ConsultadoEm == default)
+            var registro = new RegistroPreco
             {
-                registro.ConsultadoEm = DateTime.UtcNow;
-            }
-
+                ItemListaDesejosId = dados.ItemListaDesejosId,
+                CanalId = dados.CanalId,
+                PrecoCheio = dados.PrecoCheio,
+                PrecoAtual = dados.PrecoAtual,
+                Disponivel = dados.Disponivel,
+                ConsultadoEm = DateTime.UtcNow
+            };
             _contexto.RegistrosPrecos.Add(registro);
             await _contexto.SaveChangesAsync();
 
-            return Ok(registro);
+            return Ok(Projetar(registro));
         }
 
         // PUT: api/registros-precos/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> AtualizarRegistroPreco(int id, [FromBody] RegistroPreco atualizado)
+        public async Task<IActionResult> AtualizarRegistroPreco(int id, [FromBody] AtualizarPrecoRequest atualizado)
         {
             var existente = await _contexto.RegistrosPrecos.FindAsync(id);
             if (existente == null)
@@ -95,8 +84,12 @@ namespace gamelife_api.Controllers
             existente.ConsultadoEm = DateTime.UtcNow;
 
             await _contexto.SaveChangesAsync();
-            return Ok(existente);
+            return Ok(Projetar(existente));
         }
+
+        private static PrecoResponse Projetar(RegistroPreco registro) =>
+            new(registro.Id, registro.ItemListaDesejosId, registro.CanalId, registro.PrecoCheio,
+                registro.PrecoAtual, registro.Disponivel, registro.ConsultadoEm);
 
         // DELETE: api/registros-precos/5
         [HttpDelete("{id}")]

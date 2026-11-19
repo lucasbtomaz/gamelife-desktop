@@ -1,4 +1,3 @@
-using System.Text.Json;
 using gamelife_api.Context;
 using gamelife_api.Contracts;
 using gamelife_api.Controllers;
@@ -114,15 +113,12 @@ public sealed class AcessoAssinaturasSqliteTests : IAsyncLifetime
         ]), Token);
 
         Assert.Equal(9, (await biblioteca.ObterAsync(Token)).Count);
-        var controller = new DashboardController(_contexto);
-        var resposta = Assert.IsType<OkObjectResult>((await controller.ObterInicio(Token)).Result);
-        var inicioJson = JsonSerializer.SerializeToElement(resposta.Value);
-        Assert.Equal(2, inicioJson.GetProperty("Resumo").GetProperty("TotalJogos").GetInt32());
-        Assert.Equal(2, inicioJson.GetProperty("JogosRecentes").GetArrayLength());
-        var plataformas = inicioJson.GetProperty("BibliotecaPorPlataforma").EnumerateArray().ToArray();
-        Assert.Equal(1, plataformas.Single(p => p.GetProperty("Plataforma").GetString() == "XBOX").GetProperty("Total").GetInt32());
-        var saidas = inicioJson.GetProperty("AlertasSaidaCatalogo").EnumerateArray().ToArray();
-        Assert.Equal([10, 30], saidas.Select(item => item.GetProperty("DiasRestantes").GetInt32()).ToArray());
-        Assert.Equal("Sai em dez dias", saidas[0].GetProperty("Titulo").GetString());
+        var dashboard = new DashboardService(_contexto, new PerfilService(_contexto));
+        var resposta = await dashboard.ObterInicioAsync(Token);
+        Assert.Equal(2, resposta.Resumo.TotalJogos);
+        Assert.Equal(2, resposta.JogosRecentes.Count);
+        Assert.Equal(1, resposta.BibliotecaPorPlataforma.Single(p => p.Plataforma == "XBOX").Total);
+        Assert.Equal([10, 30], resposta.AlertasSaidaCatalogo.Select(item => item.DiasRestantes).ToArray());
+        Assert.Equal("Sai em dez dias", resposta.AlertasSaidaCatalogo[0].Titulo);
     }
 }

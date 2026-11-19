@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using gamelife_api.Context;
+using gamelife_api.Contracts;
 using gamelife_api.Models;
 
 namespace gamelife_api.Controllers
@@ -18,17 +19,11 @@ namespace gamelife_api.Controllers
 
         // GET: api/canais
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> ObterCanais()
+        public async Task<ActionResult<IEnumerable<CanalResumoResponse>>> ObterCanais()
         {
             var canais = await _contexto.Canais
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Nome,
-                    c.PermitePosse,
-                    c.PermitePreco,
-                    PossesCount = _contexto.PossesJogos.Count(p => p.CanalId == c.Id)
-                })
+                .Select(c => new CanalResumoResponse(c.Id, c.Nome, c.PermitePosse, c.PermitePreco,
+                    _contexto.PossesJogos.Count(p => p.CanalId == c.Id)))
                 .ToListAsync();
 
             return Ok(canais);
@@ -36,7 +31,7 @@ namespace gamelife_api.Controllers
 
         // GET: api/canais/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Canal>> ObterCanalPorId(int id)
+        public async Task<ActionResult<CanalResponse>> ObterCanalPorId(int id)
         {
             var canal = await _contexto.Canais.FindAsync(id);
             if (canal == null)
@@ -44,27 +39,28 @@ namespace gamelife_api.Controllers
                 return NotFound(new { mensagem = $"Canal com ID {id} não encontrado." });
             }
 
-            return Ok(canal);
+            return Ok(Projetar(canal));
         }
 
         // POST: api/canais
         [HttpPost]
-        public async Task<ActionResult<Canal>> CriarCanal([FromBody] Canal canal)
+        public async Task<ActionResult<CanalResponse>> CriarCanal([FromBody] SalvarCanalRequest dados)
         {
-            if (!ModelState.IsValid)
+            var canal = new Canal
             {
-                return BadRequest(ModelState);
-            }
-
+                Nome = dados.Nome,
+                PermitePosse = dados.PermitePosse,
+                PermitePreco = dados.PermitePreco
+            };
             _contexto.Canais.Add(canal);
             await _contexto.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(ObterCanalPorId), new { id = canal.Id }, canal);
+            return CreatedAtAction(nameof(ObterCanalPorId), new { id = canal.Id }, Projetar(canal));
         }
 
         // PUT: api/canais/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> AtualizarCanal(int id, [FromBody] Canal canalAtualizado)
+        public async Task<IActionResult> AtualizarCanal(int id, [FromBody] SalvarCanalRequest canalAtualizado)
         {
             var canalExistente = await _contexto.Canais.FindAsync(id);
             if (canalExistente == null)
@@ -77,8 +73,11 @@ namespace gamelife_api.Controllers
             canalExistente.PermitePreco = canalAtualizado.PermitePreco;
 
             await _contexto.SaveChangesAsync();
-            return Ok(canalExistente);
+            return Ok(Projetar(canalExistente));
         }
+
+        private static CanalResponse Projetar(Canal canal) =>
+            new(canal.Id, canal.Nome, canal.PermitePosse, canal.PermitePreco);
 
         // DELETE: api/canais/5
         [HttpDelete("{id}")]

@@ -1,3 +1,4 @@
+using gamelife_api.Services;
 using System.Net;
 using System.Net.Http.Json;
 using gamelife_api.Controllers;
@@ -113,8 +114,8 @@ public sealed class AcompanhamentosJogosEndpointsTests : IClassFixture<GameLifeA
     public void NormalizaAcentosCaixaEEspacosComAMesmaChave()
     {
         Assert.Equal(
-            AcompanhamentosJogosController.NormalizarChave("  Éclipse  "),
-            AcompanhamentosJogosController.NormalizarChave("éCLIPSE"));
+            ChaveTexto.NormalizarChave("  Éclipse  "),
+            ChaveTexto.NormalizarChave("éCLIPSE"));
     }
 
     [Fact]

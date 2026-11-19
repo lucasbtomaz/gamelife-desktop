@@ -4,7 +4,6 @@ using gamelife_api.Models;
 using gamelife_api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
 
 namespace gamelife_api.Controllers;
 
@@ -173,13 +172,13 @@ public sealed class AcompanhamentosJogosController : ControllerBase
         var titulo = request.Titulo.Trim();
         var plataforma = request.Plataforma.Trim();
         var tituloNormalizado = BibliotecaService.NormalizarTitulo(titulo);
-        var plataformaNormalizada = NormalizarChave(plataforma);
+        var plataformaNormalizada = ChaveTexto.NormalizarChave(plataforma);
         var jogos = await _contexto.Jogos.ToListAsync(cancellationToken);
         var canais = await _contexto.Canais.ToListAsync(cancellationToken);
         var jogo = jogos.FirstOrDefault(
             item => BibliotecaService.NormalizarTitulo(item.Titulo) == tituloNormalizado)
             ?? new Jogo { Titulo = titulo };
-        var canal = canais.FirstOrDefault(item => NormalizarChave(item.Nome) == plataformaNormalizada)
+        var canal = canais.FirstOrDefault(item => ChaveTexto.NormalizarChave(item.Nome) == plataformaNormalizada)
             ?? new Canal { Nome = plataforma, PermitePosse = request.AdicionarBiblioteca };
         if (jogo.Id == 0) _contexto.Jogos.Add(jogo);
         if (canal.Id == 0) _contexto.Canais.Add(canal);
@@ -232,7 +231,4 @@ public sealed class AcompanhamentosJogosController : ControllerBase
     private static decimal CalcularPercentual(AcompanhamentoJogo item) => item.ConquistasPossiveis > 0
         ? Math.Round((item.ConquistasObtidas ?? 0) * 100m / item.ConquistasPossiveis.Value, 0, MidpointRounding.AwayFromZero)
         : 0;
-
-    public static string NormalizarChave(string valor) =>
-        valor.Trim().Normalize(NormalizationForm.FormKC).ToUpperInvariant();
 }

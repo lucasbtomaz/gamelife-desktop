@@ -17,6 +17,8 @@ public static class GameLifeApplication
 
         builder.Services.AddControllers();
         builder.Services.AddScoped<BibliotecaService>();
+        builder.Services.AddScoped<DashboardService>();
+        builder.Services.AddScoped<PerfilService>();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddCors(options =>
         {
