@@ -63,6 +63,80 @@ public sealed class LocalDatabaseTests : IDisposable
     }
 
     [Fact]
+    public async Task MigraBancoSemOrigemDeAssinaturaPreservandoTodosOsDados()
+    {
+        var path = Path.Combine(_directory, "data", "assinaturas.db");
+        await LocalDatabase.PrepararAsync(path, legacyMySqlConnectionString: null);
+        await using (var antigo = NewContext(path))
+        {
+            antigo.PossesJogos.AddRange(
+                new PosseJogo { Jogo = new() { Titulo = "Compra" }, Canal = new() { Nome = "STEAM" }, CompraDigital = true },
+                new PosseJogo { Jogo = new() { Titulo = "Catálogo" }, Canal = new() { Nome = "XBOX" }, PorAssinatura = true });
+            await antigo.SaveChangesAsync();
+            await RemoverOrigemDeAssinaturaAsync(antigo);
+        }
+
+        await LocalDatabase.PrepararAsync(path, legacyMySqlConnectionString: null);
+        await LocalDatabase.PrepararAsync(path, legacyMySqlConnectionString: null);
+
+        await using var atualizado = NewContext(path);
+        Assert.Equal(2, await atualizado.Jogos.CountAsync());
+        var posses = await atualizado.PossesJogos.OrderBy(item => item.Id).ToListAsync();
+        Assert.Equal(2, posses.Count);
+        Assert.True(posses[0].CompraDigital);
+        Assert.True(posses[1].PorAssinatura);
+        Assert.False(posses[1].CompraDigital);
+        Assert.False(posses[1].MidiaFisica);
+        Assert.All(posses, item =>
+        {
+            Assert.False(item.ResgatadoDeAssinatura);
+            Assert.Null(item.ServicoExigido);
+        });
+        Assert.Empty(await atualizado.MinhasAssinaturas.ToListAsync());
+        var backup = Assert.Single(Directory.GetFiles(Path.Combine(_directory, "Backups"), "*.db"));
+        await using var copia = NewContext(backup);
+        Assert.Equal(2, await copia.Jogos.CountAsync());
+        Assert.Equal(2, await copia.PossesJogos.CountAsync());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MesclaOrigemComOuSemDadosDeResgate(bool temColunas)
+    {
+        var origem = Path.Combine(_directory, "origem", "gamelife.db");
+        var destino = Path.Combine(_directory, "data", "gamelife.db");
+        await LocalDatabase.PrepararAsync(origem, legacyMySqlConnectionString: null);
+        await LocalDatabase.PrepararAsync(destino, legacyMySqlConnectionString: null);
+        await using var source = NewContext(origem);
+        source.PossesJogos.Add(new PosseJogo
+        {
+            Jogo = new() { Titulo = "Jogo mensal" },
+            Canal = new() { Nome = "PSN" },
+            PorAssinatura = true,
+            ResgatadoDeAssinatura = temColunas,
+            ServicoExigido = temColunas ? "PlayStation Plus" : null
+        });
+        await source.SaveChangesAsync();
+        if (!temColunas)
+            await RemoverOrigemDeAssinaturaAsync(source);
+
+        await using var destination = NewContext(destino);
+        await LegacyDatabaseMigration.MesclarAsync(source, destination);
+        var posse = await destination.PossesJogos.AsNoTracking().SingleAsync();
+        Assert.True(posse.PorAssinatura);
+        Assert.Equal(temColunas, posse.ResgatadoDeAssinatura);
+        Assert.Equal(temColunas ? "PlayStation Plus" : null, posse.ServicoExigido);
+    }
+
+    private static Task RemoverOrigemDeAssinaturaAsync(GameLifeDbContext contexto) =>
+        contexto.Database.ExecuteSqlRawAsync("""
+            DROP TABLE "MinhasAssinaturas";
+            ALTER TABLE "PossesJogos" DROP COLUMN "ResgatadoDeAssinatura";
+            ALTER TABLE "PossesJogos" DROP COLUMN "ServicoExigido";
+            """);
+
+    [Fact]
     public async Task AtualizaBancoExistenteSemApagarDados()
     {
         var path = Path.Combine(_directory, "data", "existente.db");

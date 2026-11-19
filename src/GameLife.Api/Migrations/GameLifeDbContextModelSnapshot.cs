@@ -139,17 +139,6 @@ namespace gamelife_api.Migrations
                     b.ToTable("Colecoes");
                 });
 
-            modelBuilder.Entity("gamelife_api.Models.AssinaturaJogo", b =>
-                {
-                    b.HasOne("gamelife_api.Models.Jogo", "Jogo")
-                        .WithMany("Assinaturas")
-                        .HasForeignKey("JogoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Jogo");
-                });
-
             modelBuilder.Entity("gamelife_api.Models.ColecaoJogo", b =>
                 {
                     b.Property<int>("ColecaoId")
@@ -249,6 +238,31 @@ namespace gamelife_api.Migrations
                     b.ToTable("Jogos");
                 });
 
+            modelBuilder.Entity("gamelife_api.Models.MinhaAssinatura", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("ProximaRenovacao")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Servico")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Servico")
+                        .IsUnique();
+
+                    b.ToTable("MinhasAssinaturas");
+                });
+
             modelBuilder.Entity("gamelife_api.Models.MotivoDesejo", b =>
                 {
                     b.Property<int>("Id")
@@ -318,6 +332,13 @@ namespace gamelife_api.Migrations
 
                     b.Property<bool>("PorAssinatura")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("ResgatadoDeAssinatura")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ServicoExigido")
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
 
                     b.HasKey("Id");
 
@@ -418,6 +439,17 @@ namespace gamelife_api.Migrations
                     b.Navigation("Jogo");
 
                     b.Navigation("PosseJogo");
+                });
+
+            modelBuilder.Entity("gamelife_api.Models.AssinaturaJogo", b =>
+                {
+                    b.HasOne("gamelife_api.Models.Jogo", "Jogo")
+                        .WithMany("Assinaturas")
+                        .HasForeignKey("JogoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Jogo");
                 });
 
             modelBuilder.Entity("gamelife_api.Models.ColecaoJogo", b =>

@@ -1,4 +1,5 @@
 using gamelife_api.Context;
+using gamelife_api.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using System.IO;
@@ -115,6 +116,10 @@ public static class LocalDatabase
             var subscriptionsTableExists = await TabelaExisteAsync(local, "AssinaturasJogos", cancellationToken);
             var compraDigitalExists = await ColunaExisteAsync(local, "PossesJogos", "CompraDigital", cancellationToken);
             var porAssinaturaExists = await ColunaExisteAsync(local, "PossesJogos", "PorAssinatura", cancellationToken);
+            var resgatadoExists = await ColunaExisteAsync(local, "PossesJogos", "ResgatadoDeAssinatura", cancellationToken);
+            var servicoExigidoExists = await ColunaExisteAsync(local, "PossesJogos", "ServicoExigido", cancellationToken);
+            var minhasAssinaturasExists = await TabelaExisteAsync(local, "MinhasAssinaturas", cancellationToken);
+            var minhasAssinaturasIndexExists = await IndiceExisteAsync(local, "IX_MinhasAssinaturas_Servico", cancellationToken);
             var alertaSilenciadoExists = await ColunaExisteAsync(local, "ItensListaDesejos", "AlertaBibliotecaSilenciado", cancellationToken);
             var uniqueOwnershipIndexExists = await IndiceExisteAsync(
                 local, "IX_PossesJogos_JogoId_CanalId", cancellationToken);
@@ -125,14 +130,24 @@ public static class LocalDatabase
                                      !subscriptionsTableExists ||
                                      !compraDigitalExists ||
                                      !porAssinaturaExists ||
+                                     !resgatadoExists ||
+                                     !servicoExigidoExists ||
+                                     !minhasAssinaturasExists ||
+                                     !minhasAssinaturasIndexExists ||
                                      !alertaSilenciadoExists ||
                                      !uniqueOwnershipIndexExists ||
                                      !uniqueSubscriptionIndexExists;
 
+            SqliteDatabaseSnapshot? snapshot = null;
             if (databaseAlreadyExisted && (schemaNeedsUpgrade || legacyNeedsMerge))
             {
                 var projectRoot = Directory.GetParent(directory)?.FullName ?? directory;
-                CriarBackupAntesDeAlterar(fullPath, Path.Combine(projectRoot, "Backups"));
+                snapshot = await SqliteDatabaseSafety.CapturarAsync(fullPath, cancellationToken);
+                var backupPath = CriarBackupAntesDeAlterar(fullPath, Path.Combine(projectRoot, "Backups"))
+                    ?? throw new InvalidOperationException("O backup do banco local não foi criado.");
+                var backup = await SqliteDatabaseSafety.CapturarAsync(backupPath, cancellationToken);
+                if (!snapshot.Contagens.SequenceEqual(backup.Contagens))
+                    throw new InvalidOperationException("As contagens do backup diferem do banco local.");
             }
 
             if (!uniqueOwnershipIndexExists)
@@ -142,6 +157,8 @@ public static class LocalDatabase
                 local,
                 compraDigitalExists,
                 porAssinaturaExists,
+                resgatadoExists,
+                servicoExigidoExists,
                 alertaSilenciadoExists,
                 cancellationToken);
 
@@ -152,6 +169,12 @@ public static class LocalDatabase
                     .Options;
                 await using var legacySqlite = new GameLifeDbContext(legacySqliteOptions);
                 await LegacyDatabaseMigration.MesclarAsync(legacySqlite, local, cancellationToken);
+            }
+
+            if (snapshot is not null)
+            {
+                var atualizado = await SqliteDatabaseSafety.CapturarAsync(fullPath, cancellationToken);
+                SqliteDatabaseSafety.ValidarPreservacao(snapshot, atualizado);
             }
 
             if (!databaseAlreadyExisted &&
@@ -272,6 +295,8 @@ public static class LocalDatabase
         GameLifeDbContext contexto,
         bool compraDigitalExists,
         bool porAssinaturaExists,
+        bool resgatadoExists,
+        bool servicoExigidoExists,
         bool alertaSilenciadoExists,
         CancellationToken cancellationToken)
     {
@@ -294,6 +319,13 @@ public static class LocalDatabase
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_AcompanhamentosJogos_JogoId_CanalId" ON "AcompanhamentosJogos" ("JogoId", "CanalId");
             CREATE INDEX IF NOT EXISTS "IX_AcompanhamentosJogos_PosseJogoId" ON "AcompanhamentosJogos" ("PosseJogoId");
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_PossesJogos_JogoId_CanalId" ON "PossesJogos" ("JogoId", "CanalId");
+            CREATE TABLE IF NOT EXISTS "MinhasAssinaturas" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_MinhasAssinaturas" PRIMARY KEY AUTOINCREMENT,
+                "Servico" TEXT NOT NULL,
+                "Ativa" INTEGER NOT NULL,
+                "ProximaRenovacao" TEXT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_MinhasAssinaturas_Servico" ON "MinhasAssinaturas" ("Servico");
             CREATE TABLE IF NOT EXISTS "AssinaturasJogos" (
                 "Id" INTEGER NOT NULL CONSTRAINT "PK_AssinaturasJogos" PRIMARY KEY AUTOINCREMENT,
                 "JogoId" INTEGER NOT NULL,
@@ -306,6 +338,7 @@ public static class LocalDatabase
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_AssinaturasJogos_JogoId_Servico" ON "AssinaturasJogos" ("JogoId", "Servico");
             """;
 
+        await using var transaction = await contexto.Database.BeginTransactionAsync(cancellationToken);
         await contexto.Database.ExecuteSqlRawAsync(criarTabelasEIndices, cancellationToken);
 
         if (!compraDigitalExists)
@@ -325,11 +358,23 @@ public static class LocalDatabase
                 cancellationToken);
         }
 
+        if (!resgatadoExists)
+            await contexto.Database.ExecuteSqlRawAsync(
+                """ALTER TABLE "PossesJogos" ADD COLUMN "ResgatadoDeAssinatura" INTEGER NOT NULL DEFAULT 0;""",
+                cancellationToken);
+
+        if (!servicoExigidoExists)
+            await contexto.Database.ExecuteSqlRawAsync(
+                """ALTER TABLE "PossesJogos" ADD COLUMN "ServicoExigido" TEXT NULL;""",
+                cancellationToken);
+
         if (!alertaSilenciadoExists)
         {
             await contexto.Database.ExecuteSqlRawAsync(
                 """ALTER TABLE "ItensListaDesejos" ADD COLUMN "AlertaBibliotecaSilenciado" INTEGER NOT NULL DEFAULT 0;""",
                 cancellationToken);
         }
+
+        await transaction.CommitAsync(cancellationToken);
     }
 }

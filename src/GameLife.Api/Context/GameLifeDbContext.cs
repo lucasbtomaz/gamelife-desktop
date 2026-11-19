@@ -23,8 +23,12 @@ namespace gamelife_api.Context
         public DbSet<AcompanhamentoJogo> AcompanhamentosJogos { get; set; }
         public DbSet<AssinaturaJogo> AssinaturasJogos { get; set; }
 
+        public DbSet<MinhaAssinatura> MinhasAssinaturas { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<MinhaAssinatura>().HasIndex(item => item.Servico).IsUnique();
+
             modelBuilder.Entity<ColecaoJogo>()
                 .HasKey(item => new { item.ColecaoId, item.JogoId });
 

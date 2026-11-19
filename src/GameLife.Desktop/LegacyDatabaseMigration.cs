@@ -61,18 +61,24 @@ public static class LegacyDatabaseMigration
 
         var hasCompraDigital = await ColunaExisteAsync(source, "PossesJogos", "CompraDigital", cancellationToken);
         var hasPorAssinatura = await ColunaExisteAsync(source, "PossesJogos", "PorAssinatura", cancellationToken);
+        var hasResgatado = await ColunaExisteAsync(source, "PossesJogos", "ResgatadoDeAssinatura", cancellationToken);
+        var hasServicoExigido = await ColunaExisteAsync(source, "PossesJogos", "ServicoExigido", cancellationToken);
         var destinationOwnerships = await destination.PossesJogos.ToListAsync(cancellationToken);
         var ownershipMap = new Dictionary<int, PosseJogo>();
 
-        var sourceOwnershipRows = hasCompraDigital && hasPorAssinatura
-            ? await source.PossesJogos.AsNoTracking()
-                .Select(item => new LegacyOwnershipRow(
-                    item.Id, item.JogoId, item.CanalId, item.MidiaFisica, item.CompraDigital, item.PorAssinatura, item.AdquiridoEm))
-                .ToListAsync(cancellationToken)
-            : await source.PossesJogos.AsNoTracking()
-                .Select(item => new LegacyOwnershipRow(
-                    item.Id, item.JogoId, item.CanalId, item.MidiaFisica, !item.MidiaFisica, false, item.AdquiridoEm))
-                .ToListAsync(cancellationToken);
+        var compraDigital = hasCompraDigital ? """ "CompraDigital" """ : """NOT "MidiaFisica" """;
+        var porAssinatura = hasPorAssinatura ? """ "PorAssinatura" """ : "0";
+        var resgatado = hasResgatado ? """ "ResgatadoDeAssinatura" """ : "0";
+        var servico = hasServicoExigido ? """ "ServicoExigido" """ : "NULL";
+        // Os fragmentos são constantes escolhidas conforme as colunas presentes na origem.
+        var ownershipSql = $"""
+            SELECT "Id", "JogoId", "CanalId", "MidiaFisica",
+                   {compraDigital} AS "CompraDigital", {porAssinatura} AS "PorAssinatura",
+                   {resgatado} AS "ResgatadoDeAssinatura", {servico} AS "ServicoExigido", "AdquiridoEm"
+            FROM "PossesJogos"
+            """;
+        var sourceOwnershipRows = await source.Database.SqlQueryRaw<LegacyOwnershipRow>(ownershipSql)
+            .ToListAsync(cancellationToken);
 
         foreach (var sourceOwnership in sourceOwnershipRows)
         {
@@ -89,6 +95,8 @@ public static class LegacyDatabaseMigration
                     CompraDigital = sourceOwnership.CompraDigital,
                     MidiaFisica = sourceOwnership.MidiaFisica,
                     PorAssinatura = sourceOwnership.PorAssinatura,
+                    ResgatadoDeAssinatura = sourceOwnership.ResgatadoDeAssinatura,
+                    ServicoExigido = sourceOwnership.ServicoExigido,
                     AdquiridoEm = sourceOwnership.AdquiridoEm
                 };
                 destination.PossesJogos.Add(ownership);
@@ -191,6 +199,8 @@ public static class LegacyDatabaseMigration
         bool MidiaFisica,
         bool CompraDigital,
         bool PorAssinatura,
+        bool ResgatadoDeAssinatura,
+        string? ServicoExigido,
         DateTime? AdquiridoEm);
 
     private static async Task<bool> TabelaExisteAsync(
