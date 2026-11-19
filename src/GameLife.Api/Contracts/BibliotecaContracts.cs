@@ -13,7 +13,9 @@ public sealed record SalvarPlataformaBibliotecaRequest(
     bool MidiaFisica,
     SalvarAcompanhamentoBibliotecaRequest? Acompanhamento = null,
     bool? CompraDigital = null,
-    bool? PorAssinatura = null);
+    bool? PorAssinatura = null,
+    bool? ResgatadoDeAssinatura = null,
+    string? ServicoExigido = null);
 
 public sealed record SalvarAcompanhamentoBibliotecaRequest(
     string? Status,
@@ -36,7 +38,10 @@ public sealed record PlataformaBibliotecaResponse(
     bool CompraDigital,
     bool MidiaFisica,
     bool PorAssinatura,
-    AcompanhamentoBibliotecaResponse? Acompanhamento);
+    AcompanhamentoBibliotecaResponse? Acompanhamento,
+    bool ResgatadoDeAssinatura,
+    string? ServicoExigido,
+    string EstadoAcesso);
 
 public sealed record AcompanhamentoBibliotecaResponse(
     int Id,
@@ -56,6 +61,8 @@ public sealed record ItemBibliotecaPlataformaProjection(
     bool CompraDigital,
     bool MidiaFisica,
     bool PorAssinatura,
+    bool ResgatadoDeAssinatura,
+    string? ServicoExigido,
     int? AcompanhamentoId,
     string? Status,
     DateTime? DataStatus,

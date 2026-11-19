@@ -18,6 +18,25 @@ public sealed class BibliotecaEndpointsTests : IClassFixture<GameLifeApiFactory>
         _client = factory.CreateClient();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("Netflix")]
+    public async Task ResgateSemServicoValidoRetorna400SemGravar(string servico)
+    {
+        var titulo = $"Resgate inválido {Guid.NewGuid()}";
+        var resposta = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[] { new { plataforma = "PSN", resgatadoDeAssinatura = true, servicoExigido = servico } }
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+        var problema = await resposta.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>();
+        Assert.Contains("serviço", problema!.Detail);
+        using var scope = _factory.Services.CreateScope();
+        var contexto = scope.ServiceProvider.GetRequiredService<GameLifeDbContext>();
+        Assert.False(await contexto.Jogos.AnyAsync(item => item.Titulo == titulo));
+    }
+
     [Fact]
     public async Task CadastraUmJogoComDuasPlataformasEmUmaOperacao()
     {

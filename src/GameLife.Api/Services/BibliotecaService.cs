@@ -40,6 +40,8 @@ public sealed class BibliotecaService
                 posse.CompraDigital,
                 posse.MidiaFisica,
                 posse.PorAssinatura,
+                posse.ResgatadoDeAssinatura,
+                posse.ServicoExigido,
                 acompanhamento == null ? null : acompanhamento.Id,
                 acompanhamento == null
                     ? null
@@ -69,7 +71,7 @@ public sealed class BibliotecaService
             .GroupBy(item => item.JogoId)
             .ToDictionary(group => group.Key, group => (IReadOnlyList<AssinaturaJogoResponse>)group.Select(ProjetarAssinatura).ToArray());
 
-        return Agrupar(rows, subscriptionsByGame);
+        return Agrupar(rows, subscriptionsByGame, await ObterServicosAtivosAsync(cancellationToken));
     }
 
     public async Task<SalvarJogoBibliotecaResult> SalvarAsync(
@@ -134,26 +136,30 @@ public sealed class BibliotecaService
                         item => item.JogoId == game.Id && item.CanalId == channel.Id,
                         cancellationToken);
 
+                var eraDaBiblioteca = ownership is not null && !AcessoPosse.EhCatalogo(
+                    ownership.CompraDigital, ownership.MidiaFisica, ownership.PorAssinatura, ownership.ResgatadoDeAssinatura);
                 if (ownership is null)
                 {
                     ownership = new PosseJogo
                     {
                         Jogo = game,
                         Canal = channel,
-                        CompraDigital = compraDigital,
-                        MidiaFisica = midiaFisica,
-                        PorAssinatura = porAssinatura,
                         AdquiridoEm = DateTime.UtcNow
                     };
                     _contexto.PossesJogos.Add(ownership);
-                    anyNewOwnership = true;
                 }
-                else
-                {
-                    ownership.CompraDigital = compraDigital;
-                    ownership.MidiaFisica = midiaFisica;
-                    ownership.PorAssinatura = porAssinatura;
-                }
+
+                ownership.CompraDigital = compraDigital;
+                ownership.MidiaFisica = midiaFisica;
+                ownership.ResgatadoDeAssinatura = platformRequest.ResgatadoDeAssinatura ?? ownership.ResgatadoDeAssinatura;
+                ownership.ServicoExigido = ownership.ResgatadoDeAssinatura
+                    ? (platformRequest.ResgatadoDeAssinatura == true
+                        ? NormalizarServicoExigido(platformRequest.ServicoExigido)
+                        : ownership.ServicoExigido)
+                    : null;
+                ownership.PorAssinatura = porAssinatura || ownership.ResgatadoDeAssinatura;
+                anyNewOwnership |= !eraDaBiblioteca && !AcessoPosse.EhCatalogo(
+                    ownership.CompraDigital, ownership.MidiaFisica, ownership.PorAssinatura, ownership.ResgatadoDeAssinatura);
 
                 if (platformRequest.Acompanhamento is not null)
                 {
@@ -268,7 +274,17 @@ public sealed class BibliotecaService
         {
             [gameId] = subscriptions.Select(ProjetarAssinatura).ToArray()
         };
-        return Agrupar(rows, map).Single();
+        return Agrupar(rows, map, await ObterServicosAtivosAsync(cancellationToken)).Single();
+    }
+
+    private async Task<HashSet<string>> ObterServicosAtivosAsync(CancellationToken cancellationToken)
+    {
+        var servicos = await _contexto.MinhasAssinaturas.AsNoTracking()
+            .Where(item => item.Ativa)
+            .Select(item => item.Servico)
+            .ToListAsync(cancellationToken);
+
+        return servicos.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     public static AssinaturaJogoResponse ProjetarAssinatura(AssinaturaJogo item) =>
@@ -276,42 +292,50 @@ public sealed class BibliotecaService
 
     private static IReadOnlyList<JogoBibliotecaResponse> Agrupar(
         IReadOnlyList<ItemBibliotecaPlataformaProjection> rows,
-        IReadOnlyDictionary<int, IReadOnlyList<AssinaturaJogoResponse>> subscriptionsByGame) =>
+        IReadOnlyDictionary<int, IReadOnlyList<AssinaturaJogoResponse>> subscriptionsByGame,
+        IReadOnlySet<string> servicosAtivos) =>
         rows.GroupBy(item => new { item.JogoId, item.Titulo, item.AnoLancamento })
-            .Select(group => new JogoBibliotecaResponse(
-                group.Key.JogoId,
-                group.Key.Titulo,
-                group.Key.AnoLancamento,
-                group.Select(item => new PlataformaBibliotecaResponse(
-                    item.PosseId,
-                    item.CanalId,
-                    item.Plataforma,
-                    item.CompraDigital,
-                    item.MidiaFisica,
-                    item.PorAssinatura,
-                    item.AcompanhamentoId.HasValue
-                        ? new AcompanhamentoBibliotecaResponse(
-                            item.AcompanhamentoId.Value,
-                            item.Status!,
-                            item.DataStatus,
-                            item.TempoEmHoras,
-                            item.ConquistasPossiveis,
-                            item.ConquistasObtidas)
-                        : null)).ToArray(),
-                subscriptionsByGame.TryGetValue(group.Key.JogoId, out var subscriptions)
-                    ? subscriptions
-                    : []))
+            .Select(group =>
+            {
+                var subscriptions = subscriptionsByGame.GetValueOrDefault(group.Key.JogoId) ?? [];
+                var situacoes = subscriptions.Select(item => item.Situacao).ToArray();
+                return new JogoBibliotecaResponse(
+                    group.Key.JogoId,
+                    group.Key.Titulo,
+                    group.Key.AnoLancamento,
+                    group.Select(item => new PlataformaBibliotecaResponse(
+                        item.PosseId,
+                        item.CanalId,
+                        item.Plataforma,
+                        item.CompraDigital,
+                        item.MidiaFisica,
+                        item.PorAssinatura,
+                        item.AcompanhamentoId.HasValue
+                            ? new AcompanhamentoBibliotecaResponse(
+                                item.AcompanhamentoId.Value,
+                                item.Status!,
+                                item.DataStatus,
+                                item.TempoEmHoras,
+                                item.ConquistasPossiveis,
+                                item.ConquistasObtidas)
+                            : null,
+                        item.ResgatadoDeAssinatura,
+                        item.ServicoExigido,
+                        AcessoPosse.Classificar(item.CompraDigital, item.MidiaFisica, item.PorAssinatura,
+                            item.ResgatadoDeAssinatura, item.ServicoExigido, servicosAtivos, situacoes).ToString())).ToArray(),
+                    subscriptions);
+            })
             .ToArray();
 
     private static (bool CompraDigital, bool MidiaFisica, bool PorAssinatura) ResolverFormasDeAcesso(
         SalvarPlataformaBibliotecaRequest request)
     {
-        if (request.CompraDigital.HasValue || request.PorAssinatura.HasValue)
+        if (request.CompraDigital.HasValue || request.PorAssinatura.HasValue || request.ResgatadoDeAssinatura == true)
         {
             return (
                 request.CompraDigital ?? false,
                 request.MidiaFisica,
-                request.PorAssinatura ?? false);
+                request.PorAssinatura == true || request.ResgatadoDeAssinatura == true);
         }
 
         // Compatibilidade com chamadas antigas que enviavam apenas MidiaFisica
@@ -338,6 +362,9 @@ public sealed class BibliotecaService
                 throw new BibliotecaValidationException(
                     $"A plataforma {platform.Plataforma.Trim()} foi informada mais de uma vez.");
             }
+
+            if (platform.ResgatadoDeAssinatura == true)
+                NormalizarServicoExigido(platform.ServicoExigido);
 
             if (platform.CompraDigital.HasValue || platform.PorAssinatura.HasValue)
             {
@@ -381,6 +408,18 @@ public sealed class BibliotecaService
                     throw new BibliotecaValidationException(ex.Message);
                 }
             }
+        }
+    }
+
+    private static string NormalizarServicoExigido(string? servico)
+    {
+        try
+        {
+            return AssinaturaCatalogo.NormalizarServico(servico);
+        }
+        catch (ArgumentException)
+        {
+            throw new BibliotecaValidationException("Informe o serviço de assinatura exigido para o jogo resgatado.");
         }
     }
 
