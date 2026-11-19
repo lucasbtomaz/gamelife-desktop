@@ -85,3 +85,19 @@ test('mostra alerta na tela inicial para jogo na biblioteca com preço monitorad
   fireEvent.click(within(regiaoAlertas).getByRole('button', { name: 'Remover da Lista de Desejos' }));
   expect(onRemoverDesejo).toHaveBeenCalledWith(expect.objectContaining({ desejoId: 9 }));
 });
+
+test.each([[12, '12 dias'], [1, '1 dia'], [0, 'hoje']])('exibe a saída do catálogo em %d dias', (diasRestantes, prazo) => {
+  render(<HomeDashboard perfil={{}} dashboard={{ alertasSaidaCatalogo: [{
+    jogoId: 7, titulo: 'Hi-Fi Rush', servico: 'Game Pass',
+    dataEncerramento: '2026-12-01T00:00:00', diasRestantes
+  }] }} />);
+  const regiao = within(screen.getByRole('region', { name: 'Saindo do catálogo' }));
+  expect(regiao.getByText('Hi-Fi Rush')).toBeInTheDocument();
+  expect(regiao.getByText('Game Pass · 01/12/2026')).toBeInTheDocument();
+  expect(regiao.getByText(prazo)).toBeInTheDocument();
+});
+
+test('omite a região quando não há saídas próximas', () => {
+  render(<HomeDashboard perfil={{}} dashboard={{ alertasSaidaCatalogo: [] }} />);
+  expect(screen.queryByRole('region', { name: 'Saindo do catálogo' })).not.toBeInTheDocument();
+});

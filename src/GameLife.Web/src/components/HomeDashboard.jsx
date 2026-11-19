@@ -1,3 +1,10 @@
+import { formatarDataAssinatura } from '../api/assinaturas.js';
+
+const formatarPrazo = (dias) => {
+  if (dias === 0) return 'hoje';
+  return dias === 1 ? '1 dia' : `${dias} dias`;
+};
+
 const valorOuZero = (valor) => Number(valor) || 0;
 
 export const formatarHoras = (horas) => {
@@ -45,6 +52,7 @@ function HomeDashboard({
 }) {
   const resumo = dashboard?.resumo ?? {};
   const anos = dashboard?.zeradosPorAno ?? [];
+  const saidas = dashboard?.alertasSaidaCatalogo ?? [];
   const alertas = dashboard?.alertasListaDesejos ?? [];
 
   return (
@@ -99,6 +107,21 @@ function HomeDashboard({
           <div><span className="eyebrow">PERFIL LOCAL</span><h2>{perfil.nome || 'Jogador'}</h2></div>
         </div>
       </section>
+
+      {saidas.length > 0 && (
+        <section className="home-alerts" aria-label="Saindo do catálogo">
+          <h2>Saindo do catálogo</h2>
+          {saidas.map((item) => (
+            <article className="home-alert-card" key={`${item.jogoId}-${item.servico}`}>
+              <div className="home-alert-content">
+                <h3>{item.titulo}</h3>
+                <p>{item.servico} · {formatarDataAssinatura(item.dataEncerramento?.slice(0, 10))}</p>
+              </div>
+              <strong>{formatarPrazo(item.diasRestantes)}</strong>
+            </article>
+          ))}
+        </section>
+      )}
 
       <section className="dashboard-metrics" aria-label="Resumo da biblioteca">
         <MetricCard valor={`${valorOuZero(resumo.tempoNaPlataformaAnos)} anos`} rotulo="Tempo na plataforma" />
