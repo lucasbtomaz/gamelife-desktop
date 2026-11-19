@@ -12,6 +12,8 @@ const estadoPlataforma = () => ({
   compraDigital: true,
   midiaFisica: false,
   porAssinatura: false,
+  resgatadoDeAssinatura: false,
+  servicoExigido: '',
   acompanhar: false,
   status: '',
   dataStatus: '',
@@ -44,7 +46,10 @@ const criarEstadoInicial = (jogo, opcoes) => Object.fromEntries((jogo?.plataform
   return [nomeOpcao, {
     compraDigital,
     midiaFisica,
-    porAssinatura,
+    porAssinatura: porAssinatura && !plataforma.resgatadoDeAssinatura,
+    resgatadoDeAssinatura: Boolean(plataforma.resgatadoDeAssinatura),
+    resgateOriginal: Boolean(plataforma.resgatadoDeAssinatura),
+    servicoExigido: plataforma.servicoExigido ?? '',
     acompanhar: Boolean(acompanhamento),
     status: acompanhamento?.status ?? '',
     dataStatus: acompanhamento?.dataStatus?.slice(0, 10) ?? '',
@@ -75,7 +80,7 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
 
   const editando = Boolean(initialGame);
   const plataformasOriginais = new Set((initialGame?.plataformas ?? []).map((plataforma) => chavePlataforma(plataforma.nome)));
-  const temAlgumaAssinaturaMarcada = Object.values(selecionadas).some((dados) => dados.porAssinatura);
+  const temAlgumaAssinaturaMarcada = Object.values(selecionadas).some((dados) => dados.porAssinatura && !dados.resgatadoDeAssinatura);
   const exibirSecaoAssinaturas = temAlgumaAssinaturaMarcada || assinaturas.length > 0 || editorAssinatura !== null;
 
   const carregarAssinaturasCompartilhadas = async () => {
@@ -105,9 +110,15 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
   const atualizarPlataforma = (plataforma, campo, valor) => {
     setSelecionadas((atuais) => ({
       ...atuais,
-      [plataforma]: { ...atuais[plataforma], [campo]: valor }
+      [plataforma]: {
+        ...atuais[plataforma],
+        [campo]: valor,
+        ...(campo === 'resgatadoDeAssinatura' && valor ? {
+          servicoExigido: atuais[plataforma].servicoExigido || SERVICOS_ASSINATURA[0]
+        } : {})
+      }
     }));
-    if (campo === 'porAssinatura' && valor && assinaturas.length === 0 && !editorAssinatura) {
+    if (campo === 'porAssinatura' && valor && !selecionadas[plataforma]?.resgatadoDeAssinatura && assinaturas.length === 0 && !editorAssinatura) {
       setEditorAssinatura(criarRascunhoAssinatura());
     }
     setErro('');
@@ -161,8 +172,11 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
     }
 
     for (const [plataforma, dados] of Object.entries(selecionadas)) {
-      if (!dados.compraDigital && !dados.midiaFisica && !dados.porAssinatura) {
+      if (!dados.compraDigital && !dados.midiaFisica && !dados.porAssinatura && !dados.resgatadoDeAssinatura) {
         return `Selecione pelo menos uma forma de acesso para ${plataforma}.`;
+      }
+      if (dados.resgatadoDeAssinatura && !dados.servicoExigido) {
+        return `Informe o serviço de assinatura exigido em ${plataforma}.`;
       }
       if (!dados.acompanhar) continue;
       const horas = numeroOpcional(dados.tempoEmHoras);
@@ -222,7 +236,10 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
             plataforma,
             compraDigital: dados.compraDigital,
             midiaFisica: dados.midiaFisica,
-            porAssinatura: dados.porAssinatura,
+            porAssinatura: dados.porAssinatura || dados.resgatadoDeAssinatura,
+            ...(dados.resgatadoDeAssinatura
+              ? { resgatadoDeAssinatura: true, servicoExigido: dados.servicoExigido }
+              : dados.resgateOriginal ? { resgatadoDeAssinatura: false } : {}),
             ...(dados.acompanhar ? { acompanhamento: montarAcompanhamento(dados) } : {})
           };
         }),
@@ -348,6 +365,16 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
                   <label>
                     <input
                       type="checkbox"
+                      aria-label={`Resgatado da assinatura em ${plataforma}`}
+                      checked={dados.resgatadoDeAssinatura}
+                      onChange={(evento) => atualizarPlataforma(plataforma, 'resgatadoDeAssinatura', evento.target.checked)}
+                      disabled={saving}
+                    />
+                    Resgatado da assinatura
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
                       aria-label={`Acompanhar progresso em ${plataforma}`}
                       checked={dados.acompanhar}
                       onChange={(evento) => atualizarPlataforma(plataforma, 'acompanhar', evento.target.checked)}
@@ -357,6 +384,17 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
                   </label>
                 </div>
               </div>
+
+              {dados.resgatadoDeAssinatura && (
+                <label>
+                  Serviço exigido em {plataforma}
+                  <select value={dados.servicoExigido} disabled={saving}
+                    onChange={(evento) => atualizarPlataforma(plataforma, 'servicoExigido', evento.target.value)}>
+                    <option value="" disabled>Selecione o serviço</option>
+                    {SERVICOS_ASSINATURA.map((servico) => <option key={servico}>{servico}</option>)}
+                  </select>
+                </label>
+              )}
 
               {dados.acompanhar && (
                 <div className="tracking-fields">

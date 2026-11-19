@@ -3010,3 +3010,22 @@ button:disabled {
   height: 40px;
   padding-inline: 16px;
 }
+
+.minhas-assinaturas {
+  margin-top: 1rem;
+}
+
+.minha-assinatura {
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.minha-assinatura label {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.access-badge.access-redeemed { color: var(--cyan); }
+.access-badge.access-playable { color: var(--emerald); }
+.access-badge.access-blocked { color: var(--amber); }

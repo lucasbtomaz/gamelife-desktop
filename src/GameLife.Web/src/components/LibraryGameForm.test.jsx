@@ -234,3 +234,34 @@ test('carrega assinatura compartilhada da Lista de Desejos ao informar o nome do
   expect(await screen.findByText('Game Pass · Disponível')).toBeInTheDocument();
   expect(fetch).toHaveBeenCalledWith('/api/assinaturas?titulo=Persona%203%20Reload');
 });
+
+test('envia resgate sem vínculo com o catálogo', async () => {
+  const onSubmit = renderForm();
+  preencherTitulo('Jogo mensal');
+  fireEvent.click(screen.getByLabelText('Selecionar PC'));
+  fireEvent.click(screen.getByLabelText('Compra digital em PC'));
+  fireEvent.click(screen.getByLabelText('Resgatado da assinatura em PC'));
+  fireEvent.change(screen.getByLabelText('Serviço exigido em PC'), { target: { value: 'PlayStation Plus' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({
+    titulo: 'Jogo mensal',
+    plataformas: [{ plataforma: 'PC', compraDigital: false, midiaFisica: false,
+      porAssinatura: true, resgatadoDeAssinatura: true, servicoExigido: 'PlayStation Plus' }]
+  }));
+});
+
+test('carrega e permite desmarcar o resgate existente', async () => {
+  const onSubmit = vi.fn().mockResolvedValue(undefined);
+  render(<LibraryGameForm platforms={plataformas} saving={false} onSubmit={onSubmit}
+    initialGame={{ titulo: 'Jogo mensal', plataformas: [{ nome: 'PC', compraDigital: true,
+      porAssinatura: true, resgatadoDeAssinatura: true, servicoExigido: 'PlayStation Plus' }] }} />);
+  expect(screen.getByLabelText('Resgatado da assinatura em PC')).toBeChecked();
+  expect(screen.getByLabelText('Serviço exigido em PC')).toHaveValue('PlayStation Plus');
+  fireEvent.click(screen.getByLabelText('Resgatado da assinatura em PC'));
+  fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({
+    titulo: 'Jogo mensal',
+    plataformas: [{ plataforma: 'PC', compraDigital: true, midiaFisica: false,
+      porAssinatura: false, resgatadoDeAssinatura: false }]
+  }));
+});

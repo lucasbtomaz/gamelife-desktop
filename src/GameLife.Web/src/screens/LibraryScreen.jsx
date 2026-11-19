@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ehCatalogo } from '../utils/acesso.js';
 import { formatarBadgeAssinatura } from '../api/assinaturas.js';
 
 const normalize = (value) => (value ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -9,6 +10,12 @@ const formatAchievements = (tracking) => tracking?.conquistasPossiveis == null
 const statusLabels = { Zerado: 'Zerado', Dropado: 'Dropado', NaoTerminado: 'Em andamento' };
 const cardHue = (title) => [...(title ?? '')].reduce((total, char) => total + char.charCodeAt(0), 0) % 360;
 
+const estadosDeAcesso = {
+  BloqueadoSemAssinatura: { rotulo: 'Assinatura inativa', classe: 'access-blocked' },
+  JogavelPorResgate: { rotulo: 'Jogável com a assinatura', classe: 'access-playable' },
+  SaiuDoCatalogo: { rotulo: 'Saiu do catálogo', classe: 'access-blocked' }
+};
+
 const badgesDeAcesso = (entry, assinaturas) => {
   const badges = [];
   const compraDigital = entry.compraDigital ?? (!entry.midiaFisica && !entry.porAssinatura);
@@ -18,7 +25,13 @@ const badgesDeAcesso = (entry, assinaturas) => {
   if (entry.midiaFisica) {
     badges.push({ chave: 'midia-fisica', rotulo: 'Mídia física', classe: 'access-physical' });
   }
-  if (entry.porAssinatura) {
+  if (entry.resgatadoDeAssinatura) {
+    badges.push({
+      chave: 'resgate',
+      rotulo: entry.servicoExigido ? `Resgatado · ${entry.servicoExigido}` : 'Resgatado',
+      classe: 'access-redeemed'
+    });
+  } else if (entry.porAssinatura) {
     if (assinaturas.length > 0) {
       for (const assinatura of assinaturas) {
         badges.push({
@@ -31,10 +44,13 @@ const badgesDeAcesso = (entry, assinaturas) => {
       badges.push({ chave: 'assinatura', rotulo: 'Assinatura', classe: 'access-subscription' });
     }
   }
+  const estado = estadosDeAcesso[entry.estadoAcesso];
+  if (estado) badges.push({ chave: 'estado', ...estado });
   return badges;
 };
 
 export default function LibraryScreen({ items, loading, onEdit }) {
+  const [visao, setVisao] = useState('biblioteca');
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState('Todas');
   const [physicalOnly, setPhysicalOnly] = useState(false);
@@ -48,10 +64,11 @@ export default function LibraryScreen({ items, loading, onEdit }) {
     .map((item) => ({
       ...item,
       visiblePlatforms: (item.plataformas ?? []).filter((entry) =>
+        (visao === 'todos' || ehCatalogo(entry) === (visao === 'catalogo')) &&
         (platform === 'Todas' || entry.nome === platform) &&
         (!physicalOnly || entry.midiaFisica))
     }))
-    .filter((item) => item.visiblePlatforms.length > 0), [items, search, platform, physicalOnly]);
+    .filter((item) => item.visiblePlatforms.length > 0), [items, search, platform, physicalOnly, visao]);
 
   return <section className="library-showcase" aria-label="Biblioteca de jogos">
     <div className="library-toolbar">
@@ -61,6 +78,11 @@ export default function LibraryScreen({ items, loading, onEdit }) {
         <input type="search" aria-label="Buscar jogos" placeholder="Buscar jogo..." value={search} onChange={(event) => setSearch(event.target.value)} />
       </label>
       <div className="library-filters" aria-label="Filtros da biblioteca">
+        <select aria-label="Visão do acervo" value={visao} onChange={(evento) => setVisao(evento.target.value)}>
+          <option value="biblioteca">Biblioteca</option>
+          <option value="catalogo">Catálogo</option>
+          <option value="todos">Tudo</option>
+        </select>
         <div className="platform-filters">
           {['Todas', ...platforms].map((item) => <button
             type="button"

@@ -104,6 +104,12 @@ test('exibe badges compactas de compra e assinatura simultâneas e jogo só por 
   expect(within(xbox).getByText('Game Pass · Disponível')).toBeInTheDocument();
   expect(within(xbox).getByText('PlayStation Plus · Encerrado')).toBeInTheDocument();
 
+  expect(screen.queryByRole('group', { name: 'PlayStation 5' })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Visão do acervo'), { target: { value: 'catalogo' } });
+  expect(screen.queryByRole('group', { name: 'XBOX' })).not.toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'PlayStation 5' })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Visão do acervo'), { target: { value: 'todos' } });
+  expect(screen.getByRole('group', { name: 'XBOX' })).toBeInTheDocument();
   const ps5 = screen.getByRole('group', { name: 'PlayStation 5' });
   expect(within(ps5).queryByText('Compra digital')).not.toBeInTheDocument();
   expect(within(ps5).getByText('PlayStation Plus · Disponível')).toBeInTheDocument();
@@ -140,4 +146,19 @@ test('aciona a edição da ficha única selecionada', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Editar Graveyard Keeper' }));
   expect(onEdit).toHaveBeenCalledTimes(1);
   expect(onEdit).toHaveBeenCalledWith(items[0]);
+});
+
+test.each([
+  ['BloqueadoSemAssinatura', 'Assinatura inativa'],
+  ['JogavelPorResgate', 'Jogável com a assinatura']
+])('exibe o estado do resgate %s e oculta a plataforma de catálogo', (estadoAcesso, aviso) => {
+  render(<LibraryScreen items={[{ jogoId: 8, titulo: 'Jogo misto', plataformas: [
+    { posseId: 9, nome: 'PSN', porAssinatura: true, resgatadoDeAssinatura: true,
+      servicoExigido: 'PlayStation Plus', estadoAcesso },
+    { posseId: 10, nome: 'Xbox', porAssinatura: true }
+  ] }]} loading={false} />);
+
+  expect(screen.getByText('Resgatado · PlayStation Plus')).toBeInTheDocument();
+  expect(screen.getByText(aviso)).toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'Xbox' })).not.toBeInTheDocument();
 });

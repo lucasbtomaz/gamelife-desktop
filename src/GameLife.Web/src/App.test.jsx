@@ -224,3 +224,38 @@ test('permite remover ou continuar monitorando desejo a partir do alerta na tela
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/lista-desejos/15/continuar-monitorando', { method: 'POST' }));
   await waitFor(() => expect(screen.queryByRole('region', { name: 'Alertas da Lista de Desejos' })).not.toBeInTheDocument());
 });
+
+test('abre Minhas assinaturas nas Configurações', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /configurações/i }));
+  expect(screen.getByRole('heading', { name: 'Minhas assinaturas' })).toBeInTheDocument();
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/minhas-assinaturas'));
+});
+
+test('o cabeçalho conta as posses da biblioteca e confirma o cadastro de catálogo', async () => {
+  const compra = { jogoId: 1, titulo: 'Comprado', plataformas: [{ posseId: 1, nome: 'PC', compraDigital: true }] };
+  const catalogo = { jogoId: 2, titulo: 'Catálogo existente', plataformas: [{ posseId: 2, nome: 'PC', porAssinatura: true }] };
+  fetch.mockImplementation(async (url, options) => ({
+    ok: true,
+    json: async () => {
+      if (url === '/biblioteca' && options?.method === 'POST')
+        return { ...catalogo, jogoId: 3, titulo: 'Novo catálogo' };
+      if (url === '/biblioteca') return [compra, catalogo];
+      return [];
+    }
+  }));
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /biblioteca/i }));
+  expect(await screen.findByText('jogo na coleção')).toBeInTheDocument();
+  expect(screen.queryByText('Catálogo existente')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar jogo' }));
+  fireEvent.change(screen.getByLabelText('Nome do jogo'), { target: { value: 'Novo catálogo' } });
+  fireEvent.click(screen.getByLabelText('Selecionar PC'));
+  fireEvent.click(screen.getByLabelText('Compra digital em PC'));
+  fireEvent.click(screen.getByLabelText('Assinatura em PC'));
+  fireEvent.click(screen.getByRole('button', { name: /adicionar à biblioteca/i }));
+
+  expect(await screen.findByText('Novo catálogo foi salvo como jogo de catálogo.')).toBeInTheDocument();
+  expect(screen.getByText('jogo na coleção')).toBeInTheDocument();
+});

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import './App.css';
+import MinhasAssinaturas from './components/MinhasAssinaturas.jsx';
+import { ehJogoDaBiblioteca } from './utils/acesso.js';
 import HomeDashboard from './components/HomeDashboard.jsx';
 import WishlistScreen from './screens/WishlistScreen.jsx';
 import GameTrackingScreen from './screens/GameTrackingScreen.jsx';
@@ -34,7 +36,8 @@ function App() {
   const [modoBiblioteca, setModoBiblioteca] = useState(null);
   const [resumoProgresso, setResumoProgresso] = useState({ total: 0, zerados: 0, dropados: 0, naoTerminados: 0 });
   const [processandoAlertaId, setProcessandoAlertaId] = useState(null);
-  const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? itens.length;
+  const totalBiblioteca = itens.filter(ehJogoDaBiblioteca).length;
+  const totalJogosPerfil = dashboard?.resumo?.totalJogos ?? totalBiblioteca;
 
   const carregarDashboard = async () => {
     const resposta = await fetch('/api/dashboard/inicio');
@@ -116,9 +119,11 @@ function App() {
       ]);
       setMensagem({
         tipo: 'sucesso',
-        texto: editando
-          ? `${conteudo.titulo} foi atualizado na sua biblioteca.`
-          : `${conteudo.titulo} foi adicionado à sua biblioteca.`
+        texto: !ehJogoDaBiblioteca(conteudo)
+          ? `${conteudo.titulo} foi salvo como jogo de catálogo.`
+          : editando
+            ? `${conteudo.titulo} foi atualizado na sua biblioteca.`
+            : `${conteudo.titulo} foi adicionado à sua biblioteca.`
       });
       return conteudo;
     } catch (erro) {
@@ -298,7 +303,7 @@ function App() {
             <h1>Minha Biblioteca de Jogos</h1>
             <p>Organize os jogos que fazem parte da sua história.</p>
           </div>
-          <div className="collection-count"><strong>{itens.length}</strong><span>{itens.length === 1 ? 'jogo na coleção' : 'jogos na coleção'}</span></div>
+          <div className="collection-count"><strong>{totalBiblioteca}</strong><span>{totalBiblioteca === 1 ? 'jogo na coleção' : 'jogos na coleção'}</span></div>
         </header>
 
         <div className="library-top-actions">
@@ -316,7 +321,7 @@ function App() {
 
       {tela === 'colecoes' && <main id="colecoes"><header className="page-header"><div><span className="eyebrow">LISTAS PERSONALIZADAS</span><h1>Coleções</h1><p>Agrupe os jogos da biblioteca do seu jeito.</p></div></header>{mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<section className="content-grid"><div className="form-card"><h2>Nova coleção</h2><form onSubmit={criarColecao}><label htmlFor="nome-colecao">Nome</label><input id="nome-colecao" value={nomeColecao} onChange={(e) => setNomeColecao(e.target.value)} required /><label htmlFor="descricao-colecao">Descrição</label><input id="descricao-colecao" value={descricaoColecao} onChange={(e) => setDescricaoColecao(e.target.value)} /><button type="submit">Criar coleção</button></form></div><section className="collection-list">{colecoes.length === 0 ? <div className="panel-card"><h2>Nenhuma coleção</h2><p>Crie uma lista para organizar jogos por tema, prioridade ou momento.</p></div> : colecoes.map((colecao) => <article className="panel-card" key={colecao.id}><h2>{colecao.nome}</h2><p>{colecao.descricao}</p><label htmlFor={`jogo-${colecao.id}`}>Adicionar jogo</label><select id={`jogo-${colecao.id}`} defaultValue="" onChange={(e) => { adicionarNaColecao(colecao.id, e.target.value); e.target.value = ''; }}><option value="">Selecione da biblioteca</option>{itens.filter((jogo) => !colecao.jogos.some((v) => v.id === jogo.jogoId)).map((jogo) => <option key={jogo.jogoId} value={jogo.jogoId}>{jogo.titulo}</option>)}</select><div className="tag-list">{colecao.jogos.map((jogo) => <span key={jogo.id}>{jogo.titulo}</span>)}</div></article>)}</section></section></main>}
 
-      {tela === 'configuracoes' && <main id="configuracoes"><header className="page-header"><div><span className="eyebrow">PREFERÊNCIAS LOCAIS</span><h1>Configurações</h1><p>Personalize como o GameLife aparece neste computador.</p></div></header><section className="settings-card form-card">{carregandoPerfil ? <p>Carregando perfil...</p> : <form onSubmit={salvarPerfil}><label htmlFor="nome-perfil">Nome de usuário</label><input id="nome-perfil" value={perfil.nome || ''} onChange={(e) => setPerfil((atual) => ({ ...atual, nome: e.target.value }))} required /><label htmlFor="foto-perfil">Foto do perfil</label><input id="foto-perfil" className="file-input" type="file" accept="image/*" onChange={(e) => carregarFoto(e.target.files[0])} /><label className="setting-toggle"><input type="checkbox" checked={perfil.exibirJogosRecentes ?? true} onChange={(e) => setPerfil((atual) => ({ ...atual, exibirJogosRecentes: e.target.checked }))} /> Exibir jogos recentes no início</label>{mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<button type="submit">Salvar configurações</button></form>}</section></main>}
+      {tela === 'configuracoes' && <main id="configuracoes"><header className="page-header"><div><span className="eyebrow">PREFERÊNCIAS LOCAIS</span><h1>Configurações</h1><p>Personalize como o GameLife aparece neste computador.</p></div></header><section className="settings-card form-card">{carregandoPerfil ? <p>Carregando perfil...</p> : <form onSubmit={salvarPerfil}><label htmlFor="nome-perfil">Nome de usuário</label><input id="nome-perfil" value={perfil.nome || ''} onChange={(e) => setPerfil((atual) => ({ ...atual, nome: e.target.value }))} required /><label htmlFor="foto-perfil">Foto do perfil</label><input id="foto-perfil" className="file-input" type="file" accept="image/*" onChange={(e) => carregarFoto(e.target.files[0])} /><label className="setting-toggle"><input type="checkbox" checked={perfil.exibirJogosRecentes ?? true} onChange={(e) => setPerfil((atual) => ({ ...atual, exibirJogosRecentes: e.target.checked }))} /> Exibir jogos recentes no início</label>{mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<button type="submit">Salvar configurações</button></form>}</section><MinhasAssinaturas /></main>}
     </div>
   );
 }
