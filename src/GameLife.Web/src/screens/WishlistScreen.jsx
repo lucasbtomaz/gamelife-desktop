@@ -196,7 +196,7 @@ export default function WishlistScreen() {
         <input id="desejo-titulo" required maxLength="200" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
         <label htmlFor="desejo-observacao">Por que ou quando quero jogar</label>
         <textarea id="desejo-observacao" maxLength="1000" value={form.observacao} onChange={(e) => setForm({ ...form, observacao: e.target.value })} />
-        <button type="submit">Adicionar desejo</button>
+        <button className="btn-primary" type="submit">Adicionar desejo</button>
       </form>
       <section className="wishlist-cards">
         {!carregando && itens.length > 0 && <div className="wishlist-search">
@@ -216,7 +216,7 @@ export default function WishlistScreen() {
               <div className="wishlist-card-actions">
                 <button
                   type="button"
-                  className="compact-action-btn"
+                  className="btn-ghost btn-compact"
                   aria-label={`Adicionar assinatura para ${item.titulo}`}
                   onClick={() => setModalAssinatura({ item, assinatura: null })}
                 >
@@ -268,7 +268,7 @@ export default function WishlistScreen() {
             {item.observacao && <p className="wishlist-note">{item.observacao}</p>}
             <form className="wish-edit-form" onSubmit={(e) => salvarDetalhes(e, item)}>
               <input aria-label={`Editar observação de ${item.titulo}`} placeholder="Por que ou quando jogar" value={edicoes[item.id]?.observacao ?? item.observacao ?? ''} onChange={(e) => setEdicoes({ ...edicoes, [item.id]: { observacao: e.target.value } })} />
-              <button type="submit">Atualizar detalhes</button>
+              <button className="btn-primary" type="submit">Atualizar detalhes</button>
             </form>
             <div className="price-stats"><span>Menor atual<strong>{valor(item.menorPrecoAtual)}</strong>{origens.atual.length > 0 && <small className="price-origin" aria-label="Loja do menor atual" title={origens.atual.join(', ')}>{formatarOrigens(origens.atual)}</small>}</span><span>Menor histórico<strong>{valor(item.menorPrecoHistorico)}</strong>{origens.historico.length > 0 && <small className="price-origin" aria-label="Loja do menor histórico" title={origens.historico.join(', ')}>{formatarOrigens(origens.historico)}</small>}</span></div>
             <div className="store-prices">{item.precosAtuais?.length ? item.precosAtuais.map((preco) => {
@@ -291,9 +291,9 @@ export default function WishlistScreen() {
               <input aria-label={`Preço atual de ${item.titulo}`} required type="number" min="0" step="0.01" placeholder="Preço atual" value={cotacao.preco || ''} onChange={(e) => setPrecos({ ...precos, [item.id]: { ...cotacao, preco: e.target.value } })} />
               <input aria-label={`Preço cheio de ${item.titulo}`} type="number" min="0" step="0.01" placeholder="Preço cheio" value={cotacao.precoCheio || ''} onChange={(e) => setPrecos({ ...precos, [item.id]: { ...cotacao, precoCheio: e.target.value } })} />
               <label className="availability"><input aria-label={`Disponível em ${item.titulo}`} type="checkbox" checked={cotacao.disponivel ?? true} onChange={(e) => setPrecos({ ...precos, [item.id]: { ...cotacao, disponivel: e.target.checked } })} /> Disponível</label>
-              <button type="submit" aria-label={`Salvar preço de ${item.titulo}`}>Salvar preço</button>
+              <button className="btn-primary" type="submit" aria-label={`Salvar preço de ${item.titulo}`}>Salvar preço</button>
             </form>
-            <button className="history-toggle" type="button" onClick={() => setAbertos({ ...abertos, [item.id]: !abertos[item.id] })}>{abertos[item.id] ? 'Ocultar histórico' : `Ver histórico (${item.historicoPrecos?.length || 0})`}</button>
+            <button className="btn-ghost btn-compact" type="button" onClick={() => setAbertos({ ...abertos, [item.id]: !abertos[item.id] })}>{abertos[item.id] ? 'Ocultar histórico' : `Ver histórico (${item.historicoPrecos?.length || 0})`}</button>
             {abertos[item.id] && <PriceHistoryChart registros={item.historicoPrecos} tituloJogo={item.titulo} />}
           </article>;
         })}

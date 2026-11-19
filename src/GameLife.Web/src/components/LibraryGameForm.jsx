@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import LibrarySubscriptionFields from './LibrarySubscriptionFields.jsx';
+import LibraryPlatformAccess from './LibraryPlatformAccess.jsx';
 import {
   SERVICOS_ASSINATURA,
   SITUACOES_ASSINATURA,
   excluirAssinatura,
-  formatarBadgeAssinatura,
-  formatarDataAssinatura,
   obterAssinaturas
 } from '../api/assinaturas.js';
 
@@ -13,16 +13,9 @@ const estadoPlataforma = () => ({
   midiaFisica: false,
   porAssinatura: false,
   resgatadoDeAssinatura: false,
-  servicoExigido: '',
-  acompanhar: false,
-  status: '',
-  dataStatus: '',
-  tempoEmHoras: '',
-  conquistasPossiveis: '',
-  conquistasObtidas: ''
+  servicoExigido: ''
 });
 
-const numeroOpcional = (valor) => valor === '' ? undefined : Number(valor);
 const valorCampo = (valor) => valor == null ? '' : String(valor);
 const paraInputDate = (valor) => (valor ? String(valor).slice(0, 10) : '');
 const chavePlataforma = (valor) => valor.trim().normalize('NFKC').toLocaleUpperCase('pt-BR');
@@ -38,7 +31,6 @@ const criarOpcoesPlataforma = (platforms, jogo) => {
 };
 
 const criarEstadoInicial = (jogo, opcoes) => Object.fromEntries((jogo?.plataformas ?? []).map((plataforma) => {
-  const acompanhamento = plataforma.acompanhamento;
   const nomeOpcao = opcoes.find((opcao) => chavePlataforma(opcao) === chavePlataforma(plataforma.nome)) ?? plataforma.nome;
   const midiaFisica = Boolean(plataforma.midiaFisica);
   const porAssinatura = Boolean(plataforma.porAssinatura);
@@ -49,13 +41,7 @@ const criarEstadoInicial = (jogo, opcoes) => Object.fromEntries((jogo?.plataform
     porAssinatura: porAssinatura && !plataforma.resgatadoDeAssinatura,
     resgatadoDeAssinatura: Boolean(plataforma.resgatadoDeAssinatura),
     resgateOriginal: Boolean(plataforma.resgatadoDeAssinatura),
-    servicoExigido: plataforma.servicoExigido ?? '',
-    acompanhar: Boolean(acompanhamento),
-    status: acompanhamento?.status ?? '',
-    dataStatus: acompanhamento?.dataStatus?.slice(0, 10) ?? '',
-    tempoEmHoras: valorCampo(acompanhamento?.tempoEmHoras),
-    conquistasPossiveis: valorCampo(acompanhamento?.conquistasPossiveis),
-    conquistasObtidas: valorCampo(acompanhamento?.conquistasObtidas)
+    servicoExigido: plataforma.servicoExigido ?? ''
   }];
 }));
 
@@ -178,13 +164,7 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
       if (dados.resgatadoDeAssinatura && !dados.servicoExigido) {
         return `Informe o serviço de assinatura exigido em ${plataforma}.`;
       }
-      if (!dados.acompanhar) continue;
-      const horas = numeroOpcional(dados.tempoEmHoras);
-      const possiveis = numeroOpcional(dados.conquistasPossiveis);
-      const obtidas = numeroOpcional(dados.conquistasObtidas);
-      if (horas < 0 || possiveis < 0 || obtidas < 0) return 'Horas e conquistas não podem ser negativas.';
-      if (obtidas !== undefined && possiveis === undefined) return 'Informe as conquistas possíveis.';
-      if (obtidas > possiveis) return 'Conquistas obtidas não podem superar as possíveis.';
+
     }
 
     if (temAlgumaAssinaturaMarcada && assinaturasEfetivas.length === 0) {
@@ -198,16 +178,6 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
     }
 
     return '';
-  };
-
-  const montarAcompanhamento = (dados) => {
-    const acompanhamento = {};
-    if (dados.status) acompanhamento.status = dados.status;
-    if (dados.dataStatus) acompanhamento.dataStatus = dados.dataStatus;
-    if (dados.tempoEmHoras !== '') acompanhamento.tempoEmHoras = Number(dados.tempoEmHoras);
-    if (dados.conquistasPossiveis !== '') acompanhamento.conquistasPossiveis = Number(dados.conquistasPossiveis);
-    if (dados.conquistasObtidas !== '') acompanhamento.conquistasObtidas = Number(dados.conquistasObtidas);
-    return acompanhamento;
   };
 
   const enviar = async (evento) => {
@@ -239,8 +209,7 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
             porAssinatura: dados.porAssinatura || dados.resgatadoDeAssinatura,
             ...(dados.resgatadoDeAssinatura
               ? { resgatadoDeAssinatura: true, servicoExigido: dados.servicoExigido }
-              : dados.resgateOriginal ? { resgatadoDeAssinatura: false } : {}),
-            ...(dados.acompanhar ? { acompanhamento: montarAcompanhamento(dados) } : {})
+              : dados.resgateOriginal ? { resgatadoDeAssinatura: false } : {})
           };
         }),
       ...(assinaturasEfetivas.length > 0
@@ -279,27 +248,31 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
   return (
     <form className="library-game-form" onSubmit={enviar}>
       <div className="library-game-main-fields">
-        <label htmlFor="titulo">Nome do jogo</label>
-        <input
-          id="titulo"
-          value={titulo}
-          onChange={(evento) => setTitulo(evento.target.value)}
-          onBlur={carregarAssinaturasCompartilhadas}
-          maxLength="200"
-          placeholder="Ex.: Graveyard Keeper"
-          autoComplete="off"
-          disabled={saving || editando}
-        />
-        <label htmlFor="ano-lancamento">Ano de lançamento (opcional)</label>
-        <input
-          id="ano-lancamento"
-          type="number"
-          min="1"
-          max="9999"
-          value={anoLancamento}
-          onChange={(evento) => setAnoLancamento(evento.target.value)}
-          disabled={saving}
-        />
+        <label htmlFor="titulo">
+          Nome do jogo
+          <input
+            id="titulo"
+            value={titulo}
+            onChange={(evento) => setTitulo(evento.target.value)}
+            onBlur={carregarAssinaturasCompartilhadas}
+            maxLength="200"
+            placeholder="Ex.: Graveyard Keeper"
+            autoComplete="off"
+            disabled={saving || editando}
+          />
+        </label>
+        <label htmlFor="ano-lancamento">
+          Ano de lançamento (opcional)
+          <input
+            id="ano-lancamento"
+            type="number"
+            min="1"
+            max="9999"
+            value={anoLancamento}
+            onChange={(evento) => setAnoLancamento(evento.target.value)}
+            disabled={saving}
+          />
+        </label>
       </div>
 
       <fieldset className="platform-selector">
@@ -324,275 +297,29 @@ function LibraryGameForm({ platforms, saving, onSubmit, initialGame = null, onCa
       </fieldset>
 
       <div className="selected-platforms">
-        {opcoesPlataforma.filter((plataforma) => selecionadas[plataforma]).map((plataforma) => {
-          const dados = selecionadas[plataforma];
-          return (
-            <fieldset className="platform-details" key={plataforma}>
-              <legend>{plataforma}</legend>
-              <div className="access-modes-group" role="group" aria-label={`Formas de acesso em ${plataforma}`}>
-                <span className="access-modes-label">Formas de acesso</span>
-                <div className="platform-toggles">
-                  <label>
-                    <input
-                      type="checkbox"
-                      aria-label={`Compra digital em ${plataforma}`}
-                      checked={dados.compraDigital}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'compraDigital', evento.target.checked)}
-                      disabled={saving}
-                    />
-                    Compra digital
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      aria-label={`Mídia física em ${plataforma}`}
-                      checked={dados.midiaFisica}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'midiaFisica', evento.target.checked)}
-                      disabled={saving}
-                    />
-                    Mídia física
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      aria-label={`Assinatura em ${plataforma}`}
-                      checked={dados.porAssinatura}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'porAssinatura', evento.target.checked)}
-                      disabled={saving}
-                    />
-                    Assinatura
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      aria-label={`Resgatado da assinatura em ${plataforma}`}
-                      checked={dados.resgatadoDeAssinatura}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'resgatadoDeAssinatura', evento.target.checked)}
-                      disabled={saving}
-                    />
-                    Resgatado da assinatura
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      aria-label={`Acompanhar progresso em ${plataforma}`}
-                      checked={dados.acompanhar}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'acompanhar', evento.target.checked)}
-                      disabled={saving}
-                    />
-                    Acompanhar progresso
-                  </label>
-                </div>
-              </div>
-
-              {dados.resgatadoDeAssinatura && (
-                <label>
-                  Serviço exigido em {plataforma}
-                  <select value={dados.servicoExigido} disabled={saving}
-                    onChange={(evento) => atualizarPlataforma(plataforma, 'servicoExigido', evento.target.value)}>
-                    <option value="" disabled>Selecione o serviço</option>
-                    {SERVICOS_ASSINATURA.map((servico) => <option key={servico}>{servico}</option>)}
-                  </select>
-                </label>
-              )}
-
-              {dados.acompanhar && (
-                <div className="tracking-fields">
-                  <label>
-                    Status em {plataforma}
-                    <select
-                      aria-label={`Status em ${plataforma}`}
-                      value={dados.status}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'status', evento.target.value)}
-                      disabled={saving}
-                    >
-                      <option value="">Não informado</option>
-                      <option value="NaoTerminado">Em andamento</option>
-                      <option value="Zerado">Zerado</option>
-                      <option value="Dropado">Dropado</option>
-                    </select>
-                  </label>
-                  <label>
-                    Data do status em {plataforma}
-                    <input
-                      aria-label={`Data do status em ${plataforma}`}
-                      type="date"
-                      value={dados.dataStatus}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'dataStatus', evento.target.value)}
-                      disabled={saving}
-                    />
-                  </label>
-                  <label>
-                    Horas jogadas em {plataforma}
-                    <input
-                      aria-label={`Horas jogadas em ${plataforma}`}
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={dados.tempoEmHoras}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'tempoEmHoras', evento.target.value)}
-                      disabled={saving}
-                    />
-                  </label>
-                  <label>
-                    Conquistas possíveis em {plataforma}
-                    <input
-                      aria-label={`Conquistas possíveis em ${plataforma}`}
-                      type="number"
-                      min="0"
-                      value={dados.conquistasPossiveis}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'conquistasPossiveis', evento.target.value)}
-                      disabled={saving}
-                    />
-                  </label>
-                  <label>
-                    Conquistas obtidas em {plataforma}
-                    <input
-                      aria-label={`Conquistas obtidas em ${plataforma}`}
-                      type="number"
-                      min="0"
-                      value={dados.conquistasObtidas}
-                      onChange={(evento) => atualizarPlataforma(plataforma, 'conquistasObtidas', evento.target.value)}
-                      disabled={saving}
-                    />
-                  </label>
-                </div>
-              )}
-            </fieldset>
-          );
-        })}
+        {Object.entries(selecionadas).map(([plataforma, dados]) => (
+          <LibraryPlatformAccess key={plataforma} plataforma={plataforma} dados={dados}
+            atualizarPlataforma={atualizarPlataforma} saving={saving} />
+        ))}
       </div>
 
       {exibirSecaoAssinaturas && (
-        <fieldset className="platform-details library-subscriptions-box">
-          <legend>Assinaturas vinculadas ao jogo</legend>
-          <p className="subscription-hint">
-            As assinaturas são compartilhadas automaticamente entre Biblioteca e Lista de Desejos.
-          </p>
-
-          {assinaturas.length > 0 && (
-            <div className="subscription-badges" aria-label="Assinaturas cadastradas para o jogo">
-              {assinaturas.map((assinatura) => {
-                const entrada = formatarDataAssinatura(assinatura.dataDisponibilidade);
-                const encerramento = formatarDataAssinatura(assinatura.dataEncerramento);
-                const meta = [entrada ? `Entrada: ${entrada}` : null, encerramento ? `Encerramento: ${encerramento}` : null]
-                  .filter(Boolean)
-                  .join(' · ');
-                return (
-                  <span key={assinatura.servico} className="subscription-badge" title={meta || undefined}>
-                    <span className="subscription-badge-label">{formatarBadgeAssinatura(assinatura)}</span>
-                    <button
-                      type="button"
-                      className="badge-icon-btn"
-                      aria-label={`Editar assinatura ${assinatura.servico}`}
-                      onClick={() => setEditorAssinatura(criarRascunhoAssinatura(assinatura))}
-                      disabled={saving}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="badge-icon-btn danger"
-                      aria-label={`Remover assinatura ${assinatura.servico}`}
-                      onClick={() => removerAssinaturaDaLista(assinatura)}
-                      disabled={saving}
-                    >
-                      Remover
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          )}
-
-          {editorAssinatura ? (
-            <div className="subscription-subform">
-              <label htmlFor="bib-assinatura-servico">
-                Serviço de assinatura
-                <select
-                  id="bib-assinatura-servico"
-                  value={editorAssinatura.servico}
-                  onChange={(evento) => setEditorAssinatura({ ...editorAssinatura, servico: evento.target.value })}
-                  disabled={saving}
-                >
-                  {SERVICOS_ASSINATURA.map((opcao) => (
-                    <option key={opcao} value={opcao}>{opcao}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label htmlFor="bib-assinatura-situacao">
-                Situação da disponibilidade
-                <select
-                  id="bib-assinatura-situacao"
-                  value={editorAssinatura.situacao}
-                  onChange={(evento) => setEditorAssinatura({ ...editorAssinatura, situacao: evento.target.value })}
-                  disabled={saving}
-                >
-                  {SITUACOES_ASSINATURA.map((opcao) => (
-                    <option key={opcao} value={opcao}>{opcao}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label htmlFor="bib-assinatura-entrada">
-                Data de entrada
-                <input
-                  id="bib-assinatura-entrada"
-                  type="date"
-                  value={editorAssinatura.dataDisponibilidade}
-                  onChange={(evento) => setEditorAssinatura({ ...editorAssinatura, dataDisponibilidade: evento.target.value })}
-                  disabled={saving}
-                />
-              </label>
-
-              <label htmlFor="bib-assinatura-encerramento">
-                Data de encerramento
-                <input
-                  id="bib-assinatura-encerramento"
-                  type="date"
-                  value={editorAssinatura.dataEncerramento}
-                  onChange={(evento) => setEditorAssinatura({ ...editorAssinatura, dataEncerramento: evento.target.value })}
-                  disabled={saving}
-                />
-              </label>
-
-              <div className="subscription-subform-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setEditorAssinatura(null)}
-                  disabled={saving}
-                >
-                  Fechar
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmarRascunhoAssinatura}
-                  disabled={saving}
-                >
-                  Confirmar assinatura
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="compact-action-btn"
-              onClick={() => setEditorAssinatura(criarRascunhoAssinatura())}
-              disabled={saving}
-            >
-              Adicionar assinatura
-            </button>
-          )}
-        </fieldset>
+        <LibrarySubscriptionFields
+          assinaturas={assinaturas}
+          editorAssinatura={editorAssinatura}
+          setEditorAssinatura={setEditorAssinatura}
+          iniciarEdicao={(assinatura) => setEditorAssinatura(criarRascunhoAssinatura(assinatura))}
+          confirmarRascunhoAssinatura={confirmarRascunhoAssinatura}
+          removerAssinaturaDaLista={removerAssinaturaDaLista}
+          saving={saving}
+        />
       )}
 
       {erro && <div className="feedback erro" role="alert">{erro}</div>}
 
       <div className="library-form-actions">
-        {editando && <button type="button" className="secondary-button" onClick={onCancel} disabled={saving}>Cancelar</button>}
-        <button type="submit" disabled={saving}>
+        {editando && <button type="button" className="btn-ghost" onClick={onCancel} disabled={saving}>Cancelar</button>}
+        <button className="btn-primary" type="submit" disabled={saving}>
           {saving ? (editando ? 'Salvando...' : 'Adicionando...') : (editando ? 'Salvar alterações' : 'Adicionar à biblioteca')}
         </button>
       </div>

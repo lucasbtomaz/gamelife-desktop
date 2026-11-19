@@ -79,14 +79,14 @@ function HomeDashboard({
                 <div className="home-alert-actions">
                   <button
                     type="button"
-                    className="secondary-button"
+                    className="btn-ghost"
                     disabled={ocupada}
                     onClick={() => onContinuarMonitorando?.(alerta)}
                   >
                     Continuar monitorando
                   </button>
                   <button
-                    type="button"
+                    className="btn-primary" type="button"
                     disabled={ocupada}
                     onClick={() => onRemoverDesejo?.(alerta)}
                   >

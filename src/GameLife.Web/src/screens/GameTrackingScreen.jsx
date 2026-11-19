@@ -123,7 +123,7 @@ export default function GameTrackingScreen() {
           </div>
           <label className="setting-toggle"><input type="checkbox" checked={form.adicionarBiblioteca} onChange={change('adicionarBiblioteca')} /> Adicionar à Biblioteca</label>
           {message && <div className={`feedback ${message.type}`} role="alert">{message.text}</div>}
-          <div className="tracking-form-actions"><button type="submit" disabled={saving}>{editingId ? 'Atualizar acompanhamento' : 'Salvar acompanhamento'}</button>{editingId && <button type="button" className="secondary-button" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Cancelar</button>}</div>
+          <div className="tracking-form-actions"><button className="btn-primary" type="submit" disabled={saving}>{editingId ? 'Atualizar acompanhamento' : 'Salvar acompanhamento'}</button>{editingId && <button type="button" className="btn-ghost" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Cancelar</button>}</div>
         </form>
       </div>
       <section className="tracking-list" aria-label="Jogos acompanhados">
@@ -140,7 +140,7 @@ export default function GameTrackingScreen() {
                   {item.estaNaBiblioteca && <small>Na Biblioteca</small>}
                 </div>
                 <div className="tracking-entry-actions">
-                  <button type="button" className="history-toggle" aria-label={`Editar ${item.titulo} em ${item.plataforma}`} onClick={() => edit(item)}>Editar</button>
+                  <button type="button" className="btn-ghost btn-compact" aria-label={`Editar ${item.titulo} em ${item.plataforma}`} onClick={() => edit(item)}>Editar</button>
                   <button type="button" className="danger-link" aria-label={`Excluir ${item.titulo} em ${item.plataforma}`} onClick={() => remove(item)}>Excluir</button>
                 </div>
               </div>

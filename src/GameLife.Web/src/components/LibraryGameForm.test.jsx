@@ -61,40 +61,7 @@ test('mantém acompanhamento completamente opcional', async () => {
   expect(onSubmit.mock.calls[0][0].plataformas[0]).not.toHaveProperty('acompanhamento');
 });
 
-test('envia status horas e conquistas somente na plataforma acompanhada', async () => {
-  const onSubmit = renderForm();
-  preencherTitulo('Hades');
-  fireEvent.click(screen.getByLabelText('Selecionar PC'));
-  fireEvent.click(screen.getByLabelText('Selecionar STEAM'));
-  fireEvent.click(screen.getByLabelText('Acompanhar progresso em STEAM'));
-  fireEvent.change(screen.getByLabelText('Status em STEAM'), { target: { value: 'Zerado' } });
-  fireEvent.change(screen.getByLabelText('Horas jogadas em STEAM'), { target: { value: '24.5' } });
-  fireEvent.change(screen.getByLabelText('Conquistas possíveis em STEAM'), { target: { value: '50' } });
-  fireEvent.change(screen.getByLabelText('Conquistas obtidas em STEAM'), { target: { value: '42' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
-
-  await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-  expect(onSubmit).toHaveBeenCalledWith({
-    titulo: 'Hades',
-    plataformas: [
-      { plataforma: 'PC', compraDigital: true, midiaFisica: false, porAssinatura: false },
-      {
-        plataforma: 'STEAM',
-        compraDigital: true,
-        midiaFisica: false,
-        porAssinatura: false,
-        acompanhamento: {
-          status: 'Zerado',
-          tempoEmHoras: 24.5,
-          conquistasPossiveis: 50,
-          conquistasObtidas: 42
-        }
-      }
-    ]
-  });
-});
-
-test('bloqueia envio sem plataforma, sem forma de acesso e conquistas inconsistentes', async () => {
+test('bloqueia envio sem plataforma, e sem forma de acesso', async () => {
   const onSubmit = renderForm();
   preencherTitulo();
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
@@ -105,14 +72,6 @@ test('bloqueia envio sem plataforma, sem forma de acesso e conquistas inconsiste
   fireEvent.click(screen.getByLabelText('Compra digital em PC'));
   fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Selecione pelo menos uma forma de acesso para PC.');
-  expect(onSubmit).not.toHaveBeenCalled();
-
-  fireEvent.click(screen.getByLabelText('Compra digital em PC'));
-  fireEvent.click(screen.getByLabelText('Acompanhar progresso em PC'));
-  fireEvent.change(screen.getByLabelText('Conquistas possíveis em PC'), { target: { value: '5' } });
-  fireEvent.change(screen.getByLabelText('Conquistas obtidas em PC'), { target: { value: '6' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Adicionar à biblioteca' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Conquistas obtidas não podem superar as possíveis.');
   expect(onSubmit).not.toHaveBeenCalled();
 });
 
@@ -152,8 +111,8 @@ test('preenche uma ficha existente e permite marcar outra plataforma', async () 
   expect(screen.getByLabelText('Selecionar PC')).toBeChecked();
   expect(screen.getByLabelText('Mídia física em PC')).toBeChecked();
   expect(screen.getByLabelText('Selecionar STEAM')).toBeChecked();
-  expect(screen.getByLabelText('Acompanhar progresso em STEAM')).toBeChecked();
-  expect(screen.getByLabelText('Horas jogadas em STEAM')).toHaveValue(12);
+  expect(screen.queryByLabelText('Acompanhar progresso em STEAM')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Horas jogadas em STEAM')).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByLabelText('Selecionar Xbox Series X|S'));
   fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
@@ -167,14 +126,7 @@ test('preenche uma ficha existente e permite marcar outra plataforma', async () 
         plataforma: 'STEAM',
         compraDigital: true,
         midiaFisica: false,
-        porAssinatura: false,
-        acompanhamento: {
-          status: 'NaoTerminado',
-          dataStatus: '2026-11-10',
-          tempoEmHoras: 12,
-          conquistasPossiveis: 20,
-          conquistasObtidas: 5
-        }
+        porAssinatura: false
       },
       { plataforma: 'Xbox Series X|S', compraDigital: true, midiaFisica: false, porAssinatura: false }
     ]

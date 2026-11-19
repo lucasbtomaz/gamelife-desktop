@@ -241,31 +241,31 @@ function App() {
         <nav aria-label="Menu principal">
           <button className={`nav-item ${tela === 'inicio' ? 'active' : ''}`} onClick={() => setTela('inicio')}>
             <Icon><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></Icon>
-            Início
+            <span className="nav-label">Início</span>
           </button>
           <button className={`nav-item ${tela === 'biblioteca' ? 'active' : ''}`} onClick={() => { setTela('biblioteca'); setModoBiblioteca(null); setJogoEmEdicao(null); }}>
             <Icon><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></Icon>
-            Biblioteca
+            <span className="nav-label">Biblioteca</span>
           </button>
           <button className={`nav-item ${tela === 'lista-desejos' ? 'active' : ''}`} onClick={() => setTela('lista-desejos')}>
             <Icon><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></Icon>
-            Lista de Desejos
+            <span className="nav-label">Lista de Desejos</span>
           </button>
           <button className={`nav-item ${tela === 'jogos-concluidos' ? 'active' : ''}`} onClick={() => setTela('jogos-concluidos')}>
             <Icon><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></Icon>
-            Jogos concluídos
+            <span className="nav-label">Jogos concluídos</span>
           </button>
           <button className={`nav-item ${tela === 'retrospectiva' ? 'active' : ''}`} onClick={() => setTela('retrospectiva')}>
             <Icon><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/></Icon>
-            Retrospectiva
+            <span className="nav-label">Retrospectiva</span>
           </button>
           <button className={`nav-item ${tela === 'colecoes' ? 'active' : ''}`} onClick={() => setTela('colecoes')}>
             <Icon><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></Icon>
-            Coleções
+            <span className="nav-label">Coleções</span>
           </button>
           <button className={`nav-item ${tela === 'configuracoes' ? 'active' : ''}`} onClick={() => setTela('configuracoes')}>
             <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></Icon>
-            Configurações
+            <span className="nav-label">Configurações</span>
           </button>
         </nav>
 
@@ -308,7 +308,7 @@ function App() {
 
         <div className="library-top-actions">
           <LibraryProgressSummary summary={resumoProgresso} />
-          <button type="button" className="library-add-button" onClick={abrirCadastro}>Adicionar jogo</button>
+          <button type="button" className="btn-primary library-add-button" onClick={abrirCadastro}>Adicionar jogo</button>
         </div>
         {mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}
         <LibraryScreen items={itens} loading={carregando} onEdit={abrirEdicao} />
@@ -319,9 +319,9 @@ function App() {
       {tela === 'jogos-concluidos' && <GameTrackingScreen />}
       {tela === 'retrospectiva' && <PainelRetrospectiva />}
 
-      {tela === 'colecoes' && <main id="colecoes"><header className="page-header"><div><span className="eyebrow">LISTAS PERSONALIZADAS</span><h1>Coleções</h1><p>Agrupe os jogos da biblioteca do seu jeito.</p></div></header>{mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<section className="content-grid"><div className="form-card"><h2>Nova coleção</h2><form onSubmit={criarColecao}><label htmlFor="nome-colecao">Nome</label><input id="nome-colecao" value={nomeColecao} onChange={(e) => setNomeColecao(e.target.value)} required /><label htmlFor="descricao-colecao">Descrição</label><input id="descricao-colecao" value={descricaoColecao} onChange={(e) => setDescricaoColecao(e.target.value)} /><button type="submit">Criar coleção</button></form></div><section className="collection-list">{colecoes.length === 0 ? <div className="panel-card"><h2>Nenhuma coleção</h2><p>Crie uma lista para organizar jogos por tema, prioridade ou momento.</p></div> : colecoes.map((colecao) => <article className="panel-card" key={colecao.id}><h2>{colecao.nome}</h2><p>{colecao.descricao}</p><label htmlFor={`jogo-${colecao.id}`}>Adicionar jogo</label><select id={`jogo-${colecao.id}`} defaultValue="" onChange={(e) => { adicionarNaColecao(colecao.id, e.target.value); e.target.value = ''; }}><option value="">Selecione da biblioteca</option>{itens.filter((jogo) => !colecao.jogos.some((v) => v.id === jogo.jogoId)).map((jogo) => <option key={jogo.jogoId} value={jogo.jogoId}>{jogo.titulo}</option>)}</select><div className="tag-list">{colecao.jogos.map((jogo) => <span key={jogo.id}>{jogo.titulo}</span>)}</div></article>)}</section></section></main>}
+      {tela === 'colecoes' && <main id="colecoes"><header className="page-header"><div><span className="eyebrow">LISTAS PERSONALIZADAS</span><h1>Coleções</h1><p>Agrupe os jogos da biblioteca do seu jeito.</p></div></header>{mensagem && <div className={`feedback page-feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<section className="content-grid"><div className="form-card"><h2>Nova coleção</h2><form onSubmit={criarColecao}><label htmlFor="nome-colecao">Nome</label><input id="nome-colecao" value={nomeColecao} onChange={(e) => setNomeColecao(e.target.value)} required /><label htmlFor="descricao-colecao">Descrição</label><input id="descricao-colecao" value={descricaoColecao} onChange={(e) => setDescricaoColecao(e.target.value)} /><button className="btn-primary" type="submit">Criar coleção</button></form></div><section className="collection-list">{colecoes.length === 0 ? <div className="panel-card"><h2>Nenhuma coleção</h2><p>Crie uma lista para organizar jogos por tema, prioridade ou momento.</p></div> : colecoes.map((colecao) => <article className="panel-card" key={colecao.id}><h2>{colecao.nome}</h2><p>{colecao.descricao}</p><label htmlFor={`jogo-${colecao.id}`}>Adicionar jogo</label><select id={`jogo-${colecao.id}`} defaultValue="" onChange={(e) => { adicionarNaColecao(colecao.id, e.target.value); e.target.value = ''; }}><option value="">Selecione da biblioteca</option>{itens.filter((jogo) => !colecao.jogos.some((v) => v.id === jogo.jogoId)).map((jogo) => <option key={jogo.jogoId} value={jogo.jogoId}>{jogo.titulo}</option>)}</select><div className="tag-list">{colecao.jogos.map((jogo) => <span key={jogo.id}>{jogo.titulo}</span>)}</div></article>)}</section></section></main>}
 
-      {tela === 'configuracoes' && <main id="configuracoes"><header className="page-header"><div><span className="eyebrow">PREFERÊNCIAS LOCAIS</span><h1>Configurações</h1><p>Personalize como o GameLife aparece neste computador.</p></div></header><section className="settings-card form-card">{carregandoPerfil ? <p>Carregando perfil...</p> : <form onSubmit={salvarPerfil}><label htmlFor="nome-perfil">Nome de usuário</label><input id="nome-perfil" value={perfil.nome || ''} onChange={(e) => setPerfil((atual) => ({ ...atual, nome: e.target.value }))} required /><label htmlFor="foto-perfil">Foto do perfil</label><input id="foto-perfil" className="file-input" type="file" accept="image/*" onChange={(e) => carregarFoto(e.target.files[0])} /><label className="setting-toggle"><input type="checkbox" checked={perfil.exibirJogosRecentes ?? true} onChange={(e) => setPerfil((atual) => ({ ...atual, exibirJogosRecentes: e.target.checked }))} /> Exibir jogos recentes no início</label>{mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<button type="submit">Salvar configurações</button></form>}</section><MinhasAssinaturas /></main>}
+      {tela === 'configuracoes' && <main id="configuracoes"><header className="page-header"><div><span className="eyebrow">PREFERÊNCIAS LOCAIS</span><h1>Configurações</h1><p>Personalize como o GameLife aparece neste computador.</p></div></header><section className="settings-card form-card">{carregandoPerfil ? <p>Carregando perfil...</p> : <form onSubmit={salvarPerfil}><label htmlFor="nome-perfil">Nome de usuário</label><input id="nome-perfil" value={perfil.nome || ''} onChange={(e) => setPerfil((atual) => ({ ...atual, nome: e.target.value }))} required /><label htmlFor="foto-perfil">Foto do perfil</label><input id="foto-perfil" className="file-input" type="file" accept="image/*" onChange={(e) => carregarFoto(e.target.files[0])} /><label className="setting-toggle"><input type="checkbox" checked={perfil.exibirJogosRecentes ?? true} onChange={(e) => setPerfil((atual) => ({ ...atual, exibirJogosRecentes: e.target.checked }))} /> Exibir jogos recentes no início</label>{mensagem && <div className={`feedback ${mensagem.tipo}`} role="alert">{mensagem.texto}</div>}<button className="btn-primary" type="submit">Salvar configurações</button></form>}</section><MinhasAssinaturas /></main>}
     </div>
   );
 }

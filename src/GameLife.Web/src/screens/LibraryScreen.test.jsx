@@ -162,3 +162,25 @@ test.each([
   expect(screen.getByText(aviso)).toBeInTheDocument();
   expect(screen.queryByRole('group', { name: 'Xbox' })).not.toBeInTheDocument();
 });
+
+test('renderiza só uma página e ordena o acervo completo na lista compacta', () => {
+  const jogos = Array.from({ length: 1001 }, (_, i) => ({
+    jogoId: i + 1,
+    titulo: `Jogo ${i + 1}`,
+    plataformas: [{ posseId: i + 1, nome: 'PC', compraDigital: true }]
+  }));
+  render(<LibraryScreen items={jogos} loading={false} />);
+  expect(screen.getByLabelText('Exibição do acervo')).toHaveValue('lista');
+  expect(screen.getAllByRole('article')).toHaveLength(24);
+  expect(screen.getByRole('heading', { name: 'Jogo 1', exact: true })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Próxima página' }));
+  expect(screen.getByRole('heading', { name: 'Jogo 25', exact: true })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Exibição do acervo'), { target: { value: 'cards' } });
+  expect(screen.getAllByRole('article')).toHaveLength(24);
+  expect(screen.getByRole('heading', { name: 'Jogo 25', exact: true })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Ordenar jogos'), { target: { value: 'titulo-desc' } });
+  expect(screen.getByRole('heading', { name: 'Jogo 1001', exact: true })).toBeInTheDocument();
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar jogos' }), { target: { value: 'Jogo 1000' } });
+  expect(screen.getAllByRole('article')).toHaveLength(1);
+  expect(screen.getByRole('heading', { name: 'Jogo 1000', exact: true })).toBeInTheDocument();
+});

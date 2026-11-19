@@ -39,7 +39,7 @@ function LinhaAssinatura({ assinatura }) {
           setFeedback(null);
         }} />
       </label>
-      <button className="compact-action-btn" type="submit" disabled={salvando}>
+      <button className="btn-ghost btn-compact" type="submit" disabled={salvando}>
         {salvando ? 'Salvando…' : 'Salvar'}
       </button>
       {feedback && <span role={feedback.erro ? 'alert' : 'status'}>{feedback.texto}</span>}

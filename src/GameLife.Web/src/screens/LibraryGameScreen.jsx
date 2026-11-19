@@ -4,7 +4,7 @@ export default function LibraryGameScreen({ game, platforms, saving, onSubmit, o
   const editing = Boolean(game);
 
   return <main id="biblioteca-formulario" className="library-game-screen">
-    <button type="button" className="library-back-button" onClick={onBack}>Voltar para a biblioteca</button>
+    <button type="button" className="btn-ghost btn-compact" onClick={onBack}>Voltar para a biblioteca</button>
 
     <header className="page-header">
       <div>

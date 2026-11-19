@@ -2,6 +2,14 @@ import { useMemo, useState } from 'react';
 import { ehCatalogo } from '../utils/acesso.js';
 import { formatarBadgeAssinatura } from '../api/assinaturas.js';
 
+const jogosPorPagina = 24;
+const compararTitulo = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' }).compare;
+const ordenarJogos = {
+  'titulo-asc': (a, b) => compararTitulo(a.titulo, b.titulo),
+  'titulo-desc': (a, b) => compararTitulo(b.titulo, a.titulo),
+  'ano-desc': (a, b) => (b.anoLancamento ?? 0) - (a.anoLancamento ?? 0) || compararTitulo(a.titulo, b.titulo)
+};
+
 const normalize = (value) => (value ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const formatHours = (hours) => hours == null ? 'Não informado' : `${Number(hours).toLocaleString('pt-BR')} h`;
 const formatAchievements = (tracking) => tracking?.conquistasPossiveis == null
@@ -50,6 +58,13 @@ const badgesDeAcesso = (entry, assinaturas) => {
 };
 
 export default function LibraryScreen({ items, loading, onEdit }) {
+  const [exibicao, setExibicao] = useState('lista');
+  const [ordem, setOrdem] = useState('titulo-asc');
+  const [pagina, setPagina] = useState(1);
+  const alterarFiltro = (setter, valor) => {
+    setter(valor);
+    setPagina(1);
+  };
   const [visao, setVisao] = useState('biblioteca');
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState('Todas');
@@ -68,17 +83,40 @@ export default function LibraryScreen({ items, loading, onEdit }) {
         (platform === 'Todas' || entry.nome === platform) &&
         (!physicalOnly || entry.midiaFisica))
     }))
-    .filter((item) => item.visiblePlatforms.length > 0), [items, search, platform, physicalOnly, visao]);
+    .filter((item) => item.visiblePlatforms.length > 0)
+    .sort(ordenarJogos[ordem]), [items, search, platform, physicalOnly, visao, ordem]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filteredGames.length / jogosPorPagina));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const inicio = (paginaAtual - 1) * jogosPorPagina;
+  const jogosVisiveis = filteredGames.slice(inicio, inicio + jogosPorPagina);
 
   return <section className="library-showcase" aria-label="Biblioteca de jogos">
     <div className="library-toolbar">
-      <label className="library-search">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-        <span className="sr-only">Buscar jogos</span>
-        <input type="search" aria-label="Buscar jogos" placeholder="Buscar jogo..." value={search} onChange={(event) => setSearch(event.target.value)} />
-      </label>
+      <div className="library-display-controls">
+        <label className="library-search input-wrap">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <span className="sr-only">Buscar jogos</span>
+          <input type="search" aria-label="Buscar jogos" placeholder="Buscar jogo..." value={search} onChange={(event) => alterarFiltro(setSearch, event.target.value)} />
+        </label>
+        <label>
+          Ordenar jogos
+          <select value={ordem} onChange={(evento) => alterarFiltro(setOrdem, evento.target.value)}>
+            <option value="titulo-asc">Título (A–Z)</option>
+            <option value="titulo-desc">Título (Z–A)</option>
+            <option value="ano-desc">Lançamentos mais recentes</option>
+          </select>
+        </label>
+        <label>
+          Exibição do acervo
+          <select value={exibicao} onChange={(evento) => setExibicao(evento.target.value)}>
+            <option value="lista">Lista compacta</option>
+            <option value="cards">Cards</option>
+          </select>
+        </label>
+      </div>
       <div className="library-filters" aria-label="Filtros da biblioteca">
-        <select aria-label="Visão do acervo" value={visao} onChange={(evento) => setVisao(evento.target.value)}>
+        <select aria-label="Visão do acervo" value={visao} onChange={(evento) => alterarFiltro(setVisao, evento.target.value)}>
           <option value="biblioteca">Biblioteca</option>
           <option value="catalogo">Catálogo</option>
           <option value="todos">Tudo</option>
@@ -87,13 +125,13 @@ export default function LibraryScreen({ items, loading, onEdit }) {
           {['Todas', ...platforms].map((item) => <button
             type="button"
             key={item}
-            className={platform === item ? 'active' : ''}
+            className={`btn-ghost btn-compact ${platform === item ? 'active' : ''}`}
             aria-pressed={platform === item}
-            onClick={() => setPlatform(item)}
+            onClick={() => alterarFiltro(setPlatform, item)}
           >{item}</button>)}
         </div>
         <label className="physical-filter">
-          <input type="checkbox" checked={physicalOnly} onChange={(event) => setPhysicalOnly(event.target.checked)} />
+          <input type="checkbox" checked={physicalOnly} onChange={(event) => alterarFiltro(setPhysicalOnly, event.target.checked)} />
           <span>Apenas mídia física</span>
         </label>
       </div>
@@ -101,8 +139,8 @@ export default function LibraryScreen({ items, loading, onEdit }) {
 
     {loading ? <div className="library-card-empty">Carregando biblioteca...</div> :
       filteredGames.length === 0 ? <div className="library-card-empty">Nenhum jogo encontrado com esses filtros.</div> :
-        <div className="library-card-grid">
-          {filteredGames.map((game) => {
+        <div className={exibicao === 'lista' ? 'library-compact-list' : 'library-card-grid'}>
+          {jogosVisiveis.map((game) => {
             const assinaturas = game.assinaturas ?? [];
             const algumaPlataformaPorAssinatura = game.visiblePlatforms.some((entry) => entry.porAssinatura);
             return <article
@@ -162,6 +200,7 @@ export default function LibraryScreen({ items, loading, onEdit }) {
               {onEdit && <div className="library-game-actions">
                 <button
                   type="button"
+                  className="btn-ghost btn-compact"
                   aria-label={`Editar ${game.titulo}`}
                   onClick={() => onEdit(items.find((item) => item.jogoId === game.jogoId) ?? game)}
                 >Editar ficha</button>
@@ -169,5 +208,14 @@ export default function LibraryScreen({ items, loading, onEdit }) {
             </article>;
           })}
         </div>}
+    {!loading && totalPaginas > 1 && (
+      <nav className="library-pagination" aria-label="Paginação da biblioteca">
+        <button type="button" className="btn-ghost btn-compact" disabled={paginaAtual === 1}
+          onClick={() => setPagina(paginaAtual - 1)}>Página anterior</button>
+        <span role="status">Página {paginaAtual} de {totalPaginas} · {filteredGames.length} jogos</span>
+        <button type="button" className="btn-ghost btn-compact" disabled={paginaAtual === totalPaginas}
+          onClick={() => setPagina(paginaAtual + 1)}>Próxima página</button>
+      </nav>
+    )}
   </section>;
 }

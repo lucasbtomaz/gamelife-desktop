@@ -128,10 +128,10 @@ export default function AssinaturaModal({
           {erro && <div className="feedback erro" role="alert">{erro}</div>}
 
           <div className="modal-actions">
-            <button type="button" className="secondary-button" onClick={onFechar} disabled={salvando}>
+            <button type="button" className="btn-ghost" onClick={onFechar} disabled={salvando}>
               Cancelar
             </button>
-            <button type="submit" disabled={salvando}>
+            <button className="btn-primary" type="submit" disabled={salvando}>
               {salvando ? 'Salvando...' : 'Salvar assinatura'}
             </button>
           </div>

@@ -1,4 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@600;700;800&display=swap');
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/dm-sans-latin-400-700.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/dm-sans-latin-italic-400-700.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/fonts/manrope-latin-600-800.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+}
 
 :root {
   --bg-deep: #080c14;
@@ -111,7 +133,6 @@ nav {
 }
 
 .brand-button {
-  width: auto;
   height: auto;
   padding: 0 6px;
   border: 0;
@@ -395,20 +416,27 @@ label {
   color: #cbd5e1;
 }
 
-.input-wrap, .select-wrap {
+.input-wrap {
   position: relative;
-  color: #64748b;
 }
 
-.input-wrap svg, .select-wrap svg {
+.input-wrap svg {
   position: absolute;
   left: 14px;
   top: 50%;
+  width: 18px;
+  height: 18px;
   transform: translateY(-50%);
   pointer-events: none;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.8;
 }
 
-input, select {
+.input-wrap input { padding-inline-start: 42px; }
+
+:where(:is(form, .library-toolbar, .collection-list, .wishlist-search, .subscription-subform, .subscription-modal)
+  :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select)) {
   width: 100%;
   height: 48px;
   border: 1px solid var(--line-strong);
@@ -416,7 +444,7 @@ input, select {
   background: rgba(11, 16, 27, 0.8);
   color: #f8fafc;
   outline: none;
-  padding: 0 16px 0 42px;
+  padding: 0 16px;
   font-size: 13px;
   transition: all 0.2s ease;
 }
@@ -436,10 +464,11 @@ textarea {
 }
 
 select {
+  padding-inline-end: 32px;
   appearance: none;
   cursor: pointer;
   background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%), linear-gradient(135deg, #94a3b8 50%, transparent 50%);
-  background-position: calc(100% - 18px) 21px, calc(100% - 13px) 21px;
+  background-position: calc(100% - 18px) center, calc(100% - 13px) center;
   background-size: 5px 5px;
   background-repeat: no-repeat;
 }
@@ -550,34 +579,60 @@ input::placeholder, select:invalid {
   margin: 0 auto 20px;
 }
 
-/* BOTÕES ESTILO GAMER */
-button {
-  width: 100%;
-  height: 48px;
-  border: 0;
-  border-radius: 12px;
-  color: #fff;
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
-  display: flex;
+/* Controles de ação */
+:where(button) {
+  cursor: pointer;
+}
+
+:where(button:disabled) {
+  opacity: .5;
+  cursor: default;
+}
+
+:where(button:focus-visible) {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 3px;
+}
+
+:where(.btn-primary, .btn-ghost, .btn-compact) {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  font-weight: 700;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   font-size: 13px;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-weight: 700;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 
-button:hover:not(:disabled) {
-  transform: translateY(-1px);
+.btn-primary {
+  color: white;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, .35);
+}
+
+.btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #9065ff, #6d70ff);
-  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.5);
 }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: wait;
+.btn-ghost {
+  color: var(--ink);
+  background: transparent;
+  border-color: var(--line-strong);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--purple);
+  background: rgba(139, 92, 246, .12);
+}
+
+.btn-compact {
+  min-height: 34px;
+  padding: 5px 10px;
+  font-size: .78rem;
 }
 
 /* PAINEL DA BIBLIOTECA */
@@ -1065,7 +1120,6 @@ button:disabled {
 }
 
 .danger-link {
-  width: auto;
   height: auto;
   padding: 6px 12px;
   border-radius: 8px;
@@ -1104,11 +1158,6 @@ button:disabled {
   height: 40px;
 }
 
-.wish-edit-form button {
-  width: auto;
-  height: 40px;
-  padding-inline: 16px;
-}
 
 .price-stats {
   display: grid;
@@ -1241,11 +1290,6 @@ button:disabled {
   height: 40px;
 }
 
-.price-form button {
-  width: auto;
-  height: 40px;
-  padding-inline: 16px;
-}
 
 .availability {
   margin: 0;
@@ -1642,10 +1686,18 @@ button:disabled {
     width: 84px;
     padding-inline: 12px;
   }
-  .brand > span:last-child, .nav-item:not(svg), .sidebar-footer > span:last-child {
+  .brand > span:last-child, .sidebar-footer > span:last-child {
     display: none;
   }
-  .nav-item {
+  .sidebar .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .sidebar .nav-item {
     justify-content: center;
     padding: 12px 0;
   }
@@ -1706,7 +1758,6 @@ button:disabled {
 }
 
 .btn-wrapped-share {
-  width: auto;
   height: 40px;
   padding: 0 18px;
   font-size: 12px;
@@ -1757,7 +1808,6 @@ button:disabled {
 }
 
 .chip-btn {
-  width: auto;
   height: 34px;
   padding: 0 14px;
   font-size: 11px;
@@ -1817,7 +1867,6 @@ button:disabled {
 }
 
 .mode-btn {
-  width: auto;
   height: 32px;
   padding: 0 14px;
   font-size: 11px;
@@ -1998,7 +2047,6 @@ button:disabled {
 }
 
 .tab-filter {
-  width: auto;
   height: 32px;
   padding: 0 12px;
   font-size: 11px;
@@ -2178,12 +2226,11 @@ button:disabled {
 
 .library-showcase { display: grid; gap: 22px; margin-bottom: 28px; }
 .library-toolbar { display: grid; gap: 16px; }
-.library-search { justify-self: end; position: relative; width: min(100%, 330px); }
-.library-search svg {
-  position: absolute; left: 16px; top: 50%; width: 18px; height: 18px;
-  transform: translateY(-50%); fill: none; stroke: var(--muted); stroke-width: 1.8; pointer-events: none;
-}
-.library-search input { width: 100%; padding-left: 44px; }
+.library-search { min-width: 0; }
+.library-display-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.library-display-controls label { margin: 0; }
+.library-display-controls .library-search { flex: 1 1 18rem; }
+.library-display-controls select { display: block; margin-top: 4px; }
 .library-filters {
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   padding: 13px 14px; border: 1px solid var(--line); border-radius: 16px;
@@ -2191,7 +2238,7 @@ button:disabled {
 }
 .platform-filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .platform-filters button {
-  flex: 0 0 auto; width: auto; height: auto; min-height: 34px; padding: 7px 15px;
+  flex: 0 0 auto; padding-inline: 15px;
   border: 1px solid transparent; border-radius: 999px; box-shadow: none;
   background: var(--navy-2); color: var(--muted); font-size: .78rem; font-weight: 750;
 }
@@ -2268,17 +2315,12 @@ button:disabled {
 .library-top-actions .library-progress-summary { min-width: 0; margin: 0; }
 .library-add-button { width: 100%; min-height: 72px; }
 .library-game-screen .page-header { align-items: flex-start; margin-top: 26px; }
-.library-back-button {
-  width: auto; min-height: 40px; padding: 9px 16px; border: 1px solid var(--line-strong);
-  background: transparent; color: var(--ink); box-shadow: none;
-}
-.library-back-button:hover { border-color: var(--purple); background: rgba(139, 92, 246, .12); }
 .library-editor-card { max-width: 1200px; margin: 0 auto; }
 .library-editor-card > .feedback { margin-top: 16px; }
 .library-game-form { display: grid; gap: 20px; }
 .library-game-main-fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr); gap: 0 16px; }
-.library-game-main-fields label { align-self: end; }
-.library-game-main-fields input { padding-left: 16px; }
+.library-game-main-fields label { margin: 0; }
+.library-game-main-fields input { display: block; margin-top: 8px; }
 .platform-selector,
 .platform-details {
   min-width: 0; margin: 0; padding: 18px; border: 1px solid var(--line-strong);
@@ -2299,83 +2341,24 @@ button:disabled {
 .platform-toggles input { width: 17px; height: 17px; padding: 0; accent-color: var(--purple); }
 .selected-platforms { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .platform-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
-.tracking-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; margin-top: 8px; }
-.tracking-fields label { min-width: 0; }
-.tracking-fields input,
-.tracking-fields select { margin-top: 7px; padding-left: 14px; }
-.library-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
-.library-form-actions button { width: min(100%, 280px); }
-.library-form-actions .secondary-button { border: 1px solid var(--line-strong); background: transparent; color: var(--ink); box-shadow: none; }
+.library-form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 
 @media (max-width: 1080px) {
   .library-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
-  .library-search { justify-self: stretch; width: 100%; }
   .library-filters { align-items: flex-start; flex-direction: column; }
   .library-card-grid { grid-template-columns: 1fr; }
   .library-top-actions { grid-template-columns: 1fr; }
   .library-add-button { min-height: 48px; }
-  .library-game-main-fields,
-  .tracking-fields { grid-template-columns: 1fr; }
+  .library-game-main-fields { grid-template-columns: 1fr; gap: 12px; }
   .selected-platforms { grid-template-columns: 1fr; }
 }
 
 /* ========================================================= */
 /* BARRA DE BUSCA DA BIBLIOTECA & CARTÃO SPOTIFY WRAPPED     */
 /* ========================================================= */
-
-.library-search-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.library-search-wrap .search-icon {
-  position: absolute;
-  left: 14px;
-  color: #71717a;
-  display: flex;
-  align-items: center;
-  pointer-events: none;
-}
-
-.library-search-wrap input {
-  width: 100%;
-  padding: 10px 38px 10px 40px;
-  background: #18181b;
-  border: 1px solid #27272a;
-  border-radius: 12px;
-  color: #f4f4f5;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.library-search-wrap input:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
-}
-
-.library-search-wrap .clear-search-btn {
-  position: absolute;
-  right: 12px;
-  background: transparent;
-  border: none;
-  color: #a1a1aa;
-  cursor: pointer;
-  padding: 4px;
-  font-size: 13px;
-  line-height: 1;
-  border-radius: 6px;
-  transition: color 0.15s ease;
-}
-
-.library-search-wrap .clear-search-btn:hover {
-  color: #fafafa;
-}
 
 .btn-clean-filter {
   margin-top: 14px;
@@ -2705,24 +2688,7 @@ button:disabled {
   flex-shrink: 0;
 }
 
-.compact-action-btn {
-  width: auto;
-  height: auto;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #ddd6fe;
-  background: rgba(139, 92, 246, 0.16);
-  border: 1px solid rgba(139, 92, 246, 0.35);
-  box-shadow: none;
-}
 
-.compact-action-btn:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.3);
-  color: #fff;
-  box-shadow: none;
-}
 
 .subscription-badges {
   display: flex;
@@ -2757,7 +2723,6 @@ button:disabled {
 }
 
 .badge-icon-btn {
-  width: auto;
   height: auto;
   padding: 2px 7px;
   border-radius: 6px;
@@ -2850,24 +2815,8 @@ button:disabled {
   margin-top: 20px;
 }
 
-.modal-actions button,
-.subscription-subform-actions button {
-  width: auto;
-  height: 42px;
-  padding-inline: 18px;
-}
 
-.secondary-button {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid var(--line-strong);
-  color: #e2e8f0;
-  box-shadow: none;
-}
 
-.secondary-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow: none;
-}
 
 /* Badges de acesso na Biblioteca */
 .access-modes-group {
@@ -3005,11 +2954,6 @@ button:disabled {
   gap: 10px;
 }
 
-.home-alert-actions button {
-  width: auto;
-  height: 40px;
-  padding-inline: 16px;
-}
 
 .minhas-assinaturas {
   margin-top: 1rem;
@@ -3029,3 +2973,67 @@ button:disabled {
 .access-badge.access-redeemed { color: var(--cyan); }
 .access-badge.access-playable { color: var(--emerald); }
 .access-badge.access-blocked { color: var(--amber); }
+
+.library-filters > select { width: auto; min-width: 9rem; }
+.physical-filter { margin: 0; }
+
+.library-compact-list { display: grid; gap: 8px; }
+
+.library-compact-list .library-game-card {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(0, 2.5fr) auto;
+  align-items: center;
+  box-shadow: none;
+  border-radius: 10px;
+}
+
+.library-compact-list .library-game-card:hover { transform: none; }
+
+.library-compact-list .library-card-cover {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+  flex-direction: column-reverse;
+  justify-content: center;
+  padding: 10px 12px;
+  gap: 4px;
+  background: none;
+}
+
+.library-compact-list .library-card-tags { justify-content: flex-start; flex-wrap: wrap; }
+.library-compact-list .library-card-tags span { max-width: 100%; padding: 0; border: 0; background: none; color: var(--muted); }
+.library-compact-list .library-card-cover h2 { margin: 0; font-size: .95rem; overflow-wrap: anywhere; }
+.library-compact-list .library-platform-list { grid-column: 2; grid-row: 1; }
+
+.library-compact-list .library-platform-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 6px 12px;
+}
+
+.library-compact-list .library-platform-head { justify-content: flex-start; flex-wrap: wrap; }
+.library-compact-list .library-card-metrics { display: flex; flex-wrap: wrap; padding: 0; }
+.library-compact-list .library-card-metrics div { display: flex; gap: 4px; padding: 0; border: 0; }
+.library-compact-list .library-card-footer { padding: 0; }
+.library-compact-list .library-shared-subscriptions { grid-column: 1 / -1; grid-row: 2; }
+.library-compact-list .library-game-actions { grid-column: 3; grid-row: 1; padding: 8px 12px; }
+.library-compact-list .library-game-actions .btn-compact { inline-size: fit-content; }
+
+.library-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: .85rem;
+}
+
+@media (max-width: 760px) {
+  .library-compact-list .library-game-card { grid-template-columns: minmax(0, 1fr) auto; }
+  .library-compact-list .library-platform-list { grid-column: 1 / -1; grid-row: 2; }
+  .library-compact-list .library-shared-subscriptions { grid-row: 3; }
+  .library-compact-list .library-game-actions { grid-column: 2; }
+}
