@@ -18,7 +18,7 @@ namespace gamelife_api.Controllers
         public async Task<ActionResult<object>> ObterInicio(CancellationToken cancellationToken)
         {
             var perfil = await PerfilController.ObterOuCriarAsync(_contexto, cancellationToken);
-            var posses = await _contexto.PossesJogos.AsNoTracking()
+            var posses = await _contexto.PossesJogos.AsNoTracking().Where(AcessoPosse.NaoCatalogoExpressao)
                 .Select(item => new
                 {
                     item.JogoId,
@@ -32,6 +32,7 @@ namespace gamelife_api.Controllers
             var registros = await _contexto.AcompanhamentosJogos.AsNoTracking()
                 .Select(item => new
                 {
+                    item.JogoId,
                     item.Status,
                     item.DataStatus,
                     item.TempoEmHoras,
@@ -85,6 +86,7 @@ namespace gamelife_api.Controllers
 
             var jogosRecentes = perfil.ExibirJogosRecentes
                 ? await _contexto.PossesJogos.AsNoTracking()
+                    .Where(AcessoPosse.NaoCatalogoExpressao)
                     .OrderByDescending(item => item.AdquiridoEm)
                     .Take(5)
                     .Select(item => new
@@ -115,10 +117,11 @@ namespace gamelife_api.Controllers
                 .ToListAsync(cancellationToken);
 
             var alertasDesejosBrutos = await _contexto.ItensListaDesejos.AsNoTracking()
-                .Include(item => item.Jogo).ThenInclude(jogo => jogo.PossesJogos)
+                .Include(item => item.Jogo)
                 .Include(item => item.RegistrosPrecos).ThenInclude(preco => preco.Canal)
                 .Where(item => !item.AlertaBibliotecaSilenciado &&
-                               item.Jogo.PossesJogos.Any() &&
+                               item.Jogo.PossesJogos.Any(posse => !posse.PorAssinatura ||
+                                   posse.CompraDigital || posse.MidiaFisica || posse.ResgatadoDeAssinatura) &&
                                item.RegistrosPrecos.Any())
                 .ToListAsync(cancellationToken);
 
@@ -143,6 +146,32 @@ namespace gamelife_api.Controllers
                 })
                 .ToArray();
 
+            var inicio = hoje.ToDateTime(TimeOnly.MinValue);
+            var limiteExclusivo = inicio.AddDays(31);
+            var jogosNaBiblioteca = posses.Select(item => item.JogoId).ToHashSet();
+            var jogosEncerrados = registros
+                .Where(item => item.Status is StatusAcompanhamentoJogo.Zerado or StatusAcompanhamentoJogo.Dropado)
+                .Select(item => item.JogoId)
+                .ToHashSet();
+            var saidas = await _contexto.AssinaturasJogos.AsNoTracking()
+                .Where(item => item.Situacao == "Disponível" &&
+                               item.DataEncerramento >= inicio && item.DataEncerramento < limiteExclusivo)
+                .Select(item => new { item.JogoId, item.Jogo.Titulo, item.Servico, item.DataEncerramento })
+                .ToListAsync(cancellationToken);
+            var alertasSaidaCatalogo = saidas
+                .Where(item => !jogosNaBiblioteca.Contains(item.JogoId) && !jogosEncerrados.Contains(item.JogoId))
+                .Select(item => new
+                {
+                    item.JogoId,
+                    item.Titulo,
+                    item.Servico,
+                    item.DataEncerramento,
+                    DiasRestantes = (item.DataEncerramento!.Value.Date - inicio).Days
+                })
+                .OrderBy(item => item.DiasRestantes)
+                .ThenBy(item => item.Titulo)
+                .ToArray();
+
             return Ok(new
             {
                 Perfil = new { perfil.Id, perfil.Nome, perfil.FotoDataUrl, perfil.ExibirJogosRecentes, perfil.DataEntrada },
@@ -164,7 +193,8 @@ namespace gamelife_api.Controllers
                 ZeradosPorAno = zeradosPorAno,
                 JogosRecentes = jogosRecentes,
                 Conquistas = conquistas,
-                AlertasListaDesejos = alertasListaDesejos
+                AlertasListaDesejos = alertasListaDesejos,
+                AlertasSaidaCatalogo = alertasSaidaCatalogo
             });
         }
 

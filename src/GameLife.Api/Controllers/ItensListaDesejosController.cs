@@ -121,7 +121,8 @@ public sealed class ItensListaDesejosController : ControllerBase
             item.Id,
             item.JogoId,
             item.Jogo.Titulo,
-            item.Jogo.PossesJogos.Count != 0,
+            item.Jogo.PossesJogos.Any(posse => !AcessoPosse.EhCatalogo(
+                posse.CompraDigital, posse.MidiaFisica, posse.PorAssinatura, posse.ResgatadoDeAssinatura)),
             item.PrecoDesejado,
             item.Observacao,
             item.CriadoEm,

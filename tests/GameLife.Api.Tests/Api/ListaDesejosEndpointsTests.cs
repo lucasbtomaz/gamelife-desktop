@@ -9,6 +9,25 @@ public sealed class ListaDesejosEndpointsTests : IClassFixture<GameLifeApiFactor
 
     public ListaDesejosEndpointsTests(GameLifeApiFactory factory) => _client = factory.CreateClient();
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SomenteResgateMarcaJaTenhoEmPossePorAssinatura(bool resgatado)
+    {
+        var titulo = $"Jogo por assinatura {Guid.NewGuid()}";
+        var biblioteca = await _client.PostAsJsonAsync("/biblioteca", new
+        {
+            titulo,
+            plataformas = new[] { new { plataforma = "PSN", porAssinatura = true,
+                resgatadoDeAssinatura = resgatado, servicoExigido = resgatado ? "ps plus" : null } }
+        });
+        Assert.Equal(HttpStatusCode.Created, biblioteca.StatusCode);
+
+        var resposta = await _client.PostAsJsonAsync("/api/lista-desejos", new { titulo });
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
+        Assert.Equal(resgatado, (await resposta.Content.ReadFromJsonAsync<DesejoResponse>())!.JaTenho);
+    }
+
     [Fact]
     public async Task CriarDesejoReutilizaJogoDaBibliotecaESinalizaPosse()
     {
